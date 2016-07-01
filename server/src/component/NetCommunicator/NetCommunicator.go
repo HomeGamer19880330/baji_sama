@@ -1,4 +1,4 @@
-package dawn
+package NetCommunicator
 
 import (
 //	"encoding/binary"
@@ -15,7 +15,7 @@ type OnNewConnFunc func(c *Connect)
 
 //一个网络连接
 type Connect struct {
-	netConnector        net.Conn          // tcp/udp连接的类
+	netConnectorGo      net.Conn          // tcp/udp连接的类
 	isServer            bool              // 是否是服务器
 	ipAddr				*net.TCPAddr	  // 网址
 	connType    		string            // 网络连接类型(tcp/tcp4/tcp6/udp/udp4/udp6)
@@ -30,22 +30,12 @@ type Connect struct {
 //}
 
 func NewConnect(isServer bool, connType string, addr string) *Connect {
-//	c := new(Connect)
-//	c.isEnabled = false
-//	c.isServer = isServer
-//	c.connType = connType
-//	c.inMsgLimit = inMsgLimit
-//	c.outMsgLimit = outMsgLimit
-//	c.closeDone = make(chan int, 1)
-//	c.listenDone = make(chan int, 1)
-
 	connect := new(Connect)
 	connect.isServer = isServer
 	ipAddr, error := net.ResolveTCPAddr(connType, addr)
 	if error != nil {
 		fmt.Println("hello world", error)
-//		logger.Errorf(c.commu.connType, "write failed: %s", err)
-//		return err
+
 	}
 	connect.ipAddr = ipAddr
 //	net.ResolveTCPAddr(connType, addr)
