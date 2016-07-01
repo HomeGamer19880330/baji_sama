@@ -248,10 +248,10 @@ func (self *BaseService) Init(mainFrameWrok_ *framework.FrameWork) (int, error) 
 //实现ServiceInterface接口:启动网络
 func (self *BaseService) SetupNetwork() (int, error) {
 	//创建并初始化连接管理器
-	s.CM = new(ConnMng)
-	if e := s.CM.Init(s.FW.Service, s.Log); e != nil {
-		return -1, e
-	}
+//	s.CM = new(ConnMng)
+//	if e := s.CM.Init(s.FW.Service, s.Log); e != nil {
+//		return -1, e
+//	}
 
 //启动服务端组件
 s.Svr = server.Instance()
