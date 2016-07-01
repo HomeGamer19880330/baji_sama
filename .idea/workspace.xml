@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="ChangeListManager">
-    <list default="true" id="cd3972d2-0738-4727-8a6c-22d088114770" name="Default" comment="" />
+    <list default="true" id="cd3972d2-0738-4727-8a6c-22d088114770" name="Default" comment="">
+      <change type="NEW" beforePath="" afterPath="$PROJECT_DIR$/server/src/framework/ConnectorManager.go" />
+      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="$PROJECT_DIR$/.idea/workspace.xml" />
+    </list>
     <ignored path="baji_sama.iws" />
     <ignored path=".idea/workspace.xml" />
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
@@ -56,11 +59,21 @@
       <file leaf-file-name="baseService.go" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/server/src/framework/baseService.go">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.3030888">
-              <caret line="245" column="3" selection-start-line="245" selection-start-column="3" selection-end-line="245" selection-end-column="3" />
+            <state vertical-scroll-proportion="-5.2277994">
+              <caret line="60" column="26" selection-start-line="60" selection-start-column="19" selection-end-line="60" selection-end-column="26" />
               <folding>
                 <element signature="e#44#695#0" expanded="true" />
               </folding>
+            </state>
+          </provider>
+        </entry>
+      </file>
+      <file leaf-file-name="ConnectorManager.go" pinned="false" current-in-tab="false">
+        <entry file="file://$PROJECT_DIR$/server/src/framework/ConnectorManager.go">
+          <provider selected="true" editor-type-id="text-editor">
+            <state vertical-scroll-proportion="0.5555556">
+              <caret line="17" column="4" selection-start-line="17" selection-start-column="4" selection-end-line="21" selection-end-column="31" />
+              <folding />
             </state>
           </provider>
         </entry>
@@ -86,6 +99,7 @@
         <option value="$PROJECT_DIR$/server/src/framework/service.go" />
         <option value="$PROJECT_DIR$/server/src/framework/framework.go" />
         <option value="$PROJECT_DIR$/server/src/framework/baseService.go" />
+        <option value="$PROJECT_DIR$/server/src/framework/ConnectorManager.go" />
       </list>
     </option>
   </component>
@@ -95,8 +109,8 @@
     <detection-done>true</detection-done>
   </component>
   <component name="ProjectFrameBounds">
-    <option name="x" value="912" />
-    <option name="y" value="350" />
+    <option name="x" value="106" />
+    <option name="y" value="26" />
     <option name="width" value="1224" />
     <option name="height" value="669" />
   </component>
@@ -307,7 +321,7 @@
     <servers />
   </component>
   <component name="ToolWindowManager">
-    <frame x="912" y="350" width="1224" height="669" extended-state="0" />
+    <frame x="106" y="26" width="1224" height="669" extended-state="0" />
     <editor active="true" />
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.25" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
@@ -386,10 +400,18 @@
         </state>
       </provider>
     </entry>
+    <entry file="file://$PROJECT_DIR$/server/src/framework/ConnectorManager.go">
+      <provider selected="true" editor-type-id="text-editor">
+        <state vertical-scroll-proportion="0.5555556">
+          <caret line="17" column="4" selection-start-line="17" selection-start-column="4" selection-end-line="21" selection-end-column="31" />
+          <folding />
+        </state>
+      </provider>
+    </entry>
     <entry file="file://$PROJECT_DIR$/server/src/framework/baseService.go">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.3030888">
-          <caret line="245" column="3" selection-start-line="245" selection-start-column="3" selection-end-line="245" selection-end-column="3" />
+        <state vertical-scroll-proportion="-5.2277994">
+          <caret line="60" column="26" selection-start-line="60" selection-start-column="19" selection-end-line="60" selection-end-column="26" />
           <folding>
             <element signature="e#44#695#0" expanded="true" />
           </folding>
