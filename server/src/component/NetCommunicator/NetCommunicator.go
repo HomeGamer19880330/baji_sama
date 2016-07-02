@@ -13,13 +13,51 @@ import (
 // 连接建立时调用的回调函数原型
 type OnNewConnFunc func(c *Connect)
 
-//一个网络连接
-type Connect struct {
-	netConnectorGo      net.Conn          // tcp/udp连接的类
+//创建一个网络服务器或者客户端的描述文件
+type ConnectInfo struct {
+//	netConnectorGo      net.Conn          // tcp/udp连接的类
 	isServer            bool              // 是否是服务器
 	ipAddr				*net.TCPAddr	  // 网址
 	connType    		string            // 网络连接类型(tcp/tcp4/tcp6/udp/udp4/udp6)
 	isEnabled 			bool              // 是否可用中
+	inMsgLimit  		int            // 接收消息管道容量上限
+	outMsgLimit 		int            // 发送消息管道容量上限
+}
+
+//一个真实两台机器连接,以及他们之间收发消息的处理
+type ConnBetweenTwoComputer struct {
+	connectInfo         *Connect            // 网络通信类型
+	isClosed            bool              // 标明该连接是否已关闭
+	closeReason         CloseReason       // 连接关闭原因
+	inPipe              safechan.AnyChan  // 接收消息通道
+	outPipe             safechan.AnyChan  // 发送消息通道
+	conn                net.Conn          // tcp/udp连接
+	id                  uint32            // 连接id
+//	disconnCallbackFunc func(interface{}) // 连接异常断开的通知回调函数
+//	disconnCallbackArg  interface{}       // 调用模块的私有参数
+//	lastRecvTimeStamp   int64             // 记录socket上次收包的时间戳
+//	aboutToClose        bool              // 标记该连接为将管道中的消息发送后即关闭
+	sendbuf             []byte            // 消息发送缓存
+	recvbuf             []byte            // 消息收取缓存
+}
+
+// 创建新的连接
+func newConn(connectInfo *ConnectInfo, conn net.Conn) *ConnBetweenTwoComputer {
+	newconn := new(ConnBetweenTwoComputer)
+	newconn.connectInfo = connectInfo
+	newconn.isClosed = false
+	newconn.inPipe = make(safechan.AnyChan, c.inMsgLimit)
+	newconn.outPipe = make(safechan.AnyChan, c.outMsgLimit)
+	newconn.conn = conn
+	logger.Debugf(newconn.commu.connType, "established new con %s", newconn)
+	c.wgRecvConns.Add(1)
+	go newconn.recv()
+	if c.isTCP || !c.isServer {
+		// udp服务器暂时只能作为数据接收方，因此不启动发送协程
+		c.wgSendConns.Add(1)
+		go newconn.send()
+	}
+	return newconn
 }
 
 //var int Home = 1

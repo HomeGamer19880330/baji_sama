@@ -17,8 +17,8 @@ import (
 //	"ximigame.com/component/log"
 //	"ximigame.com/component/net"
 //	"ximigame.com/component/net/cfgsync"
-//	"ximigame.com/component/net/client"
-//	"ximigame.com/component/net/server"
+	"server/component/NetCommunicator/NetClient"
+	"server/component/NetCommunicator/NetServer"
 //	"ximigame.com/component/oplog"
 //	"ximigame.com/component/process"
 //	"ximigame.com/component/reportdata"
@@ -34,7 +34,7 @@ import (
 //服务接口
 type ServiceInterface interface {
 	//	MsgProcessor
-		Init(*FrameWork) (int, error)                                //初始化
+	Init(*FrameWork) (int, error)                                //初始化
 	//	RegisterCfg() (int, error)                                   //注册配置
 	//	SetLogLevel()                                                //设置日志等级
 	SetupNetwork() (int, error)                                  //启动网络
@@ -57,7 +57,7 @@ type BaseService struct {
 //	CfgSync       *cfgsync.CfgSync          //远程配置同步组件
 //	UseLocalCfg   bool                      //使用本地配置
 //	TM            *timer.TimerManager       //定时器管理组件
-//	Svr           *server.Server            //网络服务组件
+	serverInstance           *NetServer.NetServer            //网络服务组件
 //	CM            *ConnMng                  //服务连接管理器
 //	ReloadChan    chan int                  //用于通讯的各种管道, 接收重载信号的管道
 //	ExitChan      chan int                  //接收退出信号的管道
@@ -253,19 +253,20 @@ func (self *BaseService) SetupNetwork() (int, error) {
 //		return -1, e
 //	}
 
-//启动服务端组件
-s.Svr = server.Instance()
-if s.Svr == nil {
-return -1, errors.New("get server instance failed")
-}
-if !s.Svr.Initialize(s.CM,
-strings.TrimSuffix(cfgsync.SvrDeployFile, ".cfg"), s.Log, s) {
-return -1, errors.New("server init failed")
-}
-e := s.Svr.Start()
-if e != nil {
-return -1, e
-}
+	//启动服务端组件
+	self.serverInstance = NetServer.Instance()
+	if self.serverInstance == nil {
+		return -1, errors.New("get server instance failed")
+	}
+	if !self.serverInstance.Initialize() {
+//		s.CM,
+//	strings.TrimSuffix(cfgsync.SvrDeployFile, ".cfg"), s.Log, s)
+		return -1, errors.New("server init failed")
+	}
+	e := self.serverInstance.Start()
+	if e != nil {
+		return -1, e
+	}
 
 //启动客户端组件
 serverId := s.Svr.GetServerId()
