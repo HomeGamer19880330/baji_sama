@@ -43,7 +43,7 @@ func (fw *FrameWork) SetService(s Service) {
 }
 
 //启动服务(除非服务退出，该函数永远不返回)
-func (fw *FrameWork) Run() {
+func (self *FrameWork) Run() {
 	flag.Parse()
 
 	//判断是否打开性能分析器
@@ -64,13 +64,13 @@ func (fw *FrameWork) Run() {
 	}
 
 	//初始化服务接口
-	_, e := fw.Service.Init(fw)
+	_, e := self.Service.Init(fw)
 	if e != nil {
 		panic(e.Error())
 	}
 
 	//调用服务主循环函数，该函数应该一直循环直到收到命令退出
-	utils.GoMain(fw.Service.MainLoop)
+	go self.Service.MainLoop()
 }
 
 ////消息通知接口

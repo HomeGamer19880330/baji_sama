@@ -10,8 +10,21 @@ import (
 	"time"
 )
 
+var (
+	maxSilentTime uint64       = 60 * 3 // 连接静默的最长时间，3分钟,因为有心跳存在,所以如果不是僵尸死连接也不至于出现这种3分钟静默的情况
+}
 // 连接建立时调用的回调函数原型
 type OnNewConnFunc func(c *Connect)
+
+type NetMsg struct {
+	MsgType uint16 // 消息类型
+	Data    []byte // 消息体数据
+}
+
+// 分配新的消息包
+func NewNetMsg(msgtype uint16, data []byte) *NetMsg {
+	return &NetMsg{MsgType: msgtype, Data: data}
+}
 
 //创建一个网络服务器或者客户端的描述文件
 type ConnectInfo struct {
@@ -36,25 +49,25 @@ type ConnBetweenTwoComputer struct {
 //	disconnCallbackFunc func(interface{}) // 连接异常断开的通知回调函数
 //	disconnCallbackArg  interface{}       // 调用模块的私有参数
 //	lastRecvTimeStamp   int64             // 记录socket上次收包的时间戳
-//	aboutToClose        bool              // 标记该连接为将管道中的消息发送后即关闭
+	aboutToClose        bool              // 标记该连接为将管道中的消息发送后即关闭
 	sendbuf             []byte            // 消息发送缓存
 	recvbuf             []byte            // 消息收取缓存
 }
 
 // 创建新的连接
-func newConn(connectInfo *ConnectInfo, conn net.Conn) *ConnBetweenTwoComputer {
+func newConnBetweenTwoComputer (connectInfo *ConnectInfo, conn net.Conn) *ConnBetweenTwoComputer {
 	newconn := new(ConnBetweenTwoComputer)
 	newconn.connectInfo = connectInfo
 	newconn.isClosed = false
-	newconn.inPipe = make(safechan.AnyChan, c.inMsgLimit)
-	newconn.outPipe = make(safechan.AnyChan, c.outMsgLimit)
+	newconn.inPipe = make(safechan.AnyChan, connectInfo.inMsgLimit)
+	newconn.outPipe = make(safechan.AnyChan, connectInfo.outMsgLimit)
 	newconn.conn = conn
-	logger.Debugf(newconn.commu.connType, "established new con %s", newconn)
-	c.wgRecvConns.Add(1)
+//	logger.Debugf(newconn.commu.connType, "established new con %s", newconn)
+//	connectInfo.wgRecvConns.Add(1)
 	go newconn.recv()
-	if c.isTCP || !c.isServer {
+	if connectInfo.isTCP || !connectInfo.isServer {
 		// udp服务器暂时只能作为数据接收方，因此不启动发送协程
-		c.wgSendConns.Add(1)
+//		c.wgSendConns.Add(1)
 		go newconn.send()
 	}
 	return newconn
@@ -115,8 +128,223 @@ func NewConnect(isServer bool, connType string, addr string) *Connect {
 //	fmt.Println("Connect hello world")
 //}
 
+
+// 收包routine
+func (self *ConnBetweenTwoComputer) recv(){
+//	defer c.commu.wgRecvConns.Done()
+	self.recvbuf = make([]byte, socketBufSize)
+	offset := uint32(0)
+	readOffset := uint32(0)
+	currentTimeStamp := time.Now().Unix() //用这个不是比较正常么
+	self.lastRecvTimeStamp = currentTimeStamp
+
+	for {
+		if !self.connectInfo.isEnabled {
+			// 网络通信已被关闭
+			self.closeNow(true, false)
+		}
+
+		if self.IsClosed() || self.aboutToClose {
+			return
+		}
+
+		// 若缓存已满则不再继续收包
+		// 从tcp连接的数据缓存中读取数据到recvbuf,并计算出读取到的总数据长度为offset，直到读出所有数据
+		// 可能读出了多个消息,每个消息前面有四字节用来描述消息长度
+		// http://studygolang.com/articles/581
+		if offset < socketBufSize {
+			self.conn.SetReadDeadline(time.Now().Add(time.Second))
+			recvLen, err := self.conn.Read(self.recvbuf[offset:])
+			if err == io.EOF {
+				// 对端主动关闭网络通信，通知调用模块
+//				logger.Debugf(c.commu.connType, "detected %v closed by the other end", c)
+				self.closeNow(false, true)
+				return
+			} else if err != nil {
+				// 检查是否存在系统错误
+//				ne, ok := err.(net.Error)
+//				if !ok || (!ne.Temporary() && !ne.Timeout()) {
+//					logger.Errorf(c.commu.connType,
+//						"read con %v failed %v, close invalid connection", c, err)
+//					c.closeNow(false, false)
+//					return
+//				}
+			}
+
+			if self.connectInfo.isServer && self.connectInfo.isTCP {
+				if err == nil {
+					self.lastRecvTimeStamp = currentTimeStamp
+				} else if currentTimeStamp-self.lastRecvTimeStamp > int64(maxSilentTime) {
+					// 关闭静默时间过长的连接
+//					logger.Errorf(c.commu.connType, "conn %v has been silent too long!", c)
+					self.closeNow(false, false)
+					return
+				}
+			}
+
+			offset += uint32(recvLen)
+			if offset < headSize {
+				// 至少要收到8个字节才能校验消息头
+				continue
+			}
+
+			// 判断是否接收到完整的消息报文，没有则继续收取
+			size := binary.BigEndian.Uint32(c.recvbuf[:4])
+			if size <= headSize || size >= socketBufSize {
+//				logger.Errorf(c.commu.connType,
+//					"invalid packet size %d, close invalid connection %v", size, c)
+				self.closeNow(false, false)
+				return
+			}
+			if offset < size {
+				continue
+			}
+		}
+
+		//处理消息缓冲区
+		//把读取到的数据,转成消息结构放到读入管道中
+
+		readOffset = 0
+		for {
+			size := binary.BigEndian.Uint32(c.recvbuf[readOffset : readOffset+4])
+			if size >= socketBufSize {
+//				logger.Errorf(c.commu.connType,
+//					"packet size too large %d, close invalid connection, %v", size, c)
+				self.closeNow(false, false)
+				return
+			}
+
+			magic := binary.BigEndian.Uint16(c.recvbuf[readOffset+4 : readOffset+6])
+			if magic != uint16(magicNumber) {
+//				logger.Errorf(c.commu.connType, "invalid magic number %x", magic)
+				self.closeNow(false, false)
+				return
+			}
+
+			msgtype := binary.BigEndian.Uint16(c.recvbuf[readOffset+6 : readOffset+headSize])
+
+			// 向收取管道中添加新的消息体
+			data := make([]byte, size-headSize)
+			copy(data, self.recvbuf[readOffset+headSize:readOffset+size])
+			self.inPipe.Write(NewNetMsg(msgtype, data), nil, time.Second*5)
+//			err :=
+//			if err != nil {
+//				if err == safechan.CHERR_TIMEOUT {
+//					logger.Debugf(c.commu.connType, "send msg into pipe timeout! %d, %d, %s",
+//						len(c.inPipe), cap(c.inPipe), c)
+//					continue
+//				} else if err == safechan.CHERR_CLOSED {
+//					logger.Debugf(c.commu.connType, "channel is closed! con: %s %s", c, c.closeReason)
+//					return
+//				} else {
+//					logger.Errorf(c.commu.connType, "write channel failed! con: %s %s", c, c.closeReason)
+//					c.closeNow(false, false)
+//					return
+//				}
+//			}
+
+			// 分析缓冲区中是否还有消息可以继续处理
+			readOffset += size
+			if offset-readOffset > headSize {
+				size := binary.BigEndian.Uint32(c.recvbuf[readOffset : readOffset+4])
+				if size >= socketBufSize {
+//					logger.Errorf(c.commu.connType,
+//						"packet size too large %d, close invalid connection %v", size, c)
+//					self.closeNow(false, false)
+					return
+				}
+
+				if size+readOffset <= offset {
+					continue
+				}
+			}
+//			copy(c.recvbuf, c.recvbuf[readOffset:offset])
+			offset = offset - readOffset
+			break
+		}
+	}
+}
+
+// 从消息管道收取报文
+func (self *ConnBetweenTwoComputer) readPacketsFromPipe() error {
+	self.sendbuf = self.sendbuf[:0]
+	readSize := 0
+	sleepSeconds := 0
+
+	// 从发送管道中获取报文
+	for readSize < socketBufSize/2 {
+		re, e := self.outPipe.Read(nil, time.Second*time.Duration(sleepSeconds))
+		if e != nil {
+			if e == safechan.CHERR_TIMEOUT {
+				return nil
+			} else if e == safechan.CHERR_EMPTY {
+				if readSize > 0 {
+					break //发送收到的消息
+				} else {
+					sleepSeconds = 5 //等待5s
+					continue
+				}
+			} else if e == safechan.CHERR_CLOSED {
+//				logger.Debugf(c.commu.connType,
+//					"pipe is closed! con: %s %s", c, c.closeReason)
+				return e
+			} else {
+//				logger.Errorf(c.commu.connType,
+//					"read pipe failed! con: %s %s", c, c.closeReason)
+				self.closeNow(false, false)
+				return e
+			}
+		} else {
+			msg := re.([]byte)
+			self.sendbuf = append(self.sendbuf, msg...)
+			readSize += len(msg)
+			sleepSeconds = 0
+		}
+	}
+
+	return nil
+}
+
+// 发包routine
+func (self *ConnBetweenTwoComputer) send() {
+	defer self.connectInfo.wgSendConns.Done()
+	self.sendbuf = make([]byte, 0, socketBufSize*2)
+
+	for {
+		if self.IsClosed() {
+			return
+		}
+
+		if self.aboutToClose && len(self.outPipe) == 0 {
+			self.closeNow(true, false)
+		}
+
+		// 收取报文
+		e := self.readPacketsFromPipe()
+		if e != nil {
+//			logger.Errorf(c.commu.connType, "read packets failed: %s", e)
+			return
+		}
+		if len(self.sendbuf) == 0 {
+			continue
+		}
+
+		// 向socket发送报文
+		sendLen, err := self.conn.Write(self.sendbuf)
+		if err != nil || sendLen != len(self.sendbuf) {
+			if !self.IsClosed() {
+//				logger.Errorf(c.commu.connType,
+//					"write con %v failed: %s, close invalid connection", c, err)
+				self.closeNow(false, false)
+			}
+			return
+		}
+	}
+}
+
+
 // 启动网络通信，开始监听/连接端口，连接建立成功后通过回调函数回传给调用模块
-func(c *Connect) Start(f OnNewConnFunc) {
+func(c *ConnectInfo) Start(f OnNewConnFunc) {
 	if f == nil {
 //		logger.Errorf(c.connType, "invalid parameter")
 		return
@@ -145,7 +373,7 @@ func(c *Connect) Start(f OnNewConnFunc) {
 
 // tcp端口监听routine
 const max = 3
-func listen(c *Connect, f OnNewConnFunc) {
+func listen(c *ConnectInfo, f OnNewConnFunc) {
 //	defer c.wgListeners.Done()
 	fmt.Println(c.connType, "start listening to", c.ipAddr)
 //	logger.Debugf(, c.tcpAddrs[index]).
@@ -194,7 +422,7 @@ func listen(c *Connect, f OnNewConnFunc) {
 }
 
 // 启动tcp服务协程
-func startTCPServer(c *Connect, f OnNewConnFunc) {
+func startTCPServer(c *ConnectInfo, f OnNewConnFunc) {
 //	service:=":9090"
 //  tcpAddr, err := net.ResolveTCPAddr("tcp4", c.ipAddr)
 //  l,err := net.ListenTCP("tcp",tcpAddr)
@@ -209,7 +437,7 @@ func startTCPServer(c *Connect, f OnNewConnFunc) {
 }
 
 // 启动tcp连接协程
-func startTCPClient(c *Connect, f OnNewConnFunc) {
+func startTCPClient(c *ConnectInfo, f OnNewConnFunc) {
 	go func() {
 //		for _, addr := range c.tcpAddrs {
 			con, err := net.DialTCP(c.connType, nil, c.ipAddr)
@@ -226,4 +454,34 @@ func startTCPClient(c *Connect, f OnNewConnFunc) {
 	}()
 }
 
+// 关闭连接，内部函数
+//	normalClose: 表示由服务主动关闭
+//	isEOF: 表示通信对端已关闭
+func (self *ConnBetweenTwoComputer) closeNow(normalClose bool, isEOF bool) {
+	if normalClose && len(self.outPipe) > 0 && !self.aboutToClose {
+		//主动关闭连接之前需将管道中的数据发送完毕
+		self.aboutToClose = true
+		return
+	}
 
+	err := self.conn.Close()
+	if err == nil {
+		self.isClosed = true
+		if normalClose {
+			self.closeReason = BY_SELF
+		} else {
+			if isEOF {
+				self.closeReason = BY_OTHER
+			} else {
+				self.closeReason = BY_ACCIDENT
+			}
+		}
+		close(self.inPipe)
+		close(self.outPipe)
+//		logger.Debugf(c.commu.connType, "connection %s closed %s", c, c.closeReason)
+
+//		if c.disconnCallbackFunc != nil {
+//			c.disconnCallbackFunc(c.disconnCallbackArg)
+//		}
+	}
+}

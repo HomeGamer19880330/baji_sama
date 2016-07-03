@@ -60,7 +60,7 @@ type BaseService struct {
 	serverInstance           *NetServer.NetServer            //网络服务组件
 //	CM            *ConnMng                  //服务连接管理器
 //	ReloadChan    chan int                  //用于通讯的各种管道, 接收重载信号的管道
-//	ExitChan      chan int                  //接收退出信号的管道
+	ExitChan      chan int                  //接收退出信号的管道
 //	HttpChan      chan *process.HttpContext //接收http命令的管道
 //	TNChan        chan *timer.TimeoutNotify //接收定时器超时通知的管道
 //	MP            MsgMap                    //消息映射
@@ -84,7 +84,7 @@ const (
 func (self *BaseService) Init(mainFrameWrok_ *framework.FrameWork) (int, error) {
 		//创建各个管道
 //		s.ReloadChan = make(chan int, 1)
-//		s.ExitChan = make(chan int, 1)
+		s.ExitChan = make(chan int, 1)
 //		s.HttpChan = make(chan *process.HttpContext)
 //		s.TNChan = make(chan *timer.TimeoutNotify, DefaultTNChanSize)
 //
@@ -269,26 +269,26 @@ func (self *BaseService) SetupNetwork() (int, error) {
 	}
 
 //启动客户端组件
-serverId := s.Svr.GetServerId()
-for cfgName, svrType := range s.cliCfgMap {
-s.CP[svrType] = client.NewClient(cfgName, s.Log, serverId, s)
-s.CP[svrType].Start()
-}
-
-//初始化运营日志组件
-logCli, exists := s.CP[uint32(msg.SvrType_LOG)]
-if exists {
-s.OL = oplog.Instance()
-s.OL.Initialize(logCli, s.Log)
-}
-//状态服务组件
-{
-statusKeeperCli, exists := s.CP[uint32(msg.SvrType_StatusKeeper)]
-if exists {
-s.StatusWrapper = reportdata.Instance()
-s.StatusWrapper.Initialize(statusKeeperCli, s.Log)
-}
-}
+//serverId := s.Svr.GetServerId()
+//for cfgName, svrType := range s.cliCfgMap {
+//s.CP[svrType] = client.NewClient(cfgName, s.Log, serverId, s)
+//s.CP[svrType].Start()
+//}
+//
+////初始化运营日志组件
+//logCli, exists := s.CP[uint32(msg.SvrType_LOG)]
+//if exists {
+//s.OL = oplog.Instance()
+//s.OL.Initialize(logCli, s.Log)
+//}
+////状态服务组件
+//{
+//statusKeeperCli, exists := s.CP[uint32(msg.SvrType_StatusKeeper)]
+//if exists {
+//s.StatusWrapper = reportdata.Instance()
+//s.StatusWrapper.Initialize(statusKeeperCli, s.Log)
+//}
+//}
 
 return 0, nil
 }
@@ -429,25 +429,25 @@ return 0, nil
 //func (s *BaseService) OnNetDisconn(conn *net.Conn) {
 //
 //}
-//
-////实现Service接口:主循环函数
-//func (s *BaseService) MainLoop() {
-//for {
-//select {
-//case <-s.ReloadChan: //重载配置
-//s.FW.Service.OnReload()
-//case <-s.ExitChan: //进程退出
-//s.FW.Service.OnExit()
-//return
-//case http := <-s.HttpChan: //http命令
-//s.FW.Service.ProcessHttpCmd(http)
-//s.HttpChan <- nil
-//case tn := <-s.TNChan: //定时器超时
-//s.FW.Service.ProcessTimer(tn)
-//}
-//}
-//}
-//
+
+//实现Service接口:主循环函数
+func (self *BaseService) MainLoop() {
+	for {
+		select {
+//			case <-s.ReloadChan: //重载配置
+//				s.FW.Service.OnReload()
+			case <-s.ExitChan: //进程退出
+				s.FW.Service.OnExit()
+				return
+//			case http := <-s.HttpChan: //http命令
+//				s.FW.Service.ProcessHttpCmd(http)
+//				s.HttpChan <- nil
+//			case tn := <-s.TNChan: //定时器超时
+//				s.FW.Service.ProcessTimer(tn)
+		}
+	}
+}
+
 ////实现Service接口:注册消息处理
 //func (s *BaseService) RegisterMsgHandle() {
 //}
