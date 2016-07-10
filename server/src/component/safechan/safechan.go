@@ -8,13 +8,18 @@ import (
 )
 
 import (
-	"ximigame.com/component/log"
-	"ximigame.com/utils/errors"
+	"component/Utils/Errors"
+	"component/Logger"
 )
 
-var CHERR_CLOSED = errors.New("channel is closed")
-var CHERR_TIMEOUT = errors.New("channel ops timeout")
-var CHERR_EMPTY = errors.New("channel is empty")
+//import (
+//	"ximigame.com/component/log"
+//	"ximigame.com/utils/errors"
+//)
+
+var CHERR_CLOSED = Errors.New("channel is closed")
+var CHERR_TIMEOUT = Errors.New("channel ops timeout")
+var CHERR_EMPTY = Errors.New("channel is empty")
 
 type AnyChan chan interface{}
 
@@ -22,10 +27,10 @@ type AnyChan chan interface{}
 // 操作超时，返回CHERR_EMPTY表示管道是空的
 //	l: 日志管理器
 //	t: 操作超时值，为0表示在没有数据可读时立刻返回错误，否则等待特定时间直至超时
-func (ch AnyChan) Read(l *log.Logger, t time.Duration) (re interface{}, err error) {
+func (ch AnyChan) Read(l *Logger.Logger, t time.Duration) (re interface{}, err error) {
 	defer func() {
 		if err := recover(); err != nil {
-			l.Errorf("CHANNEL", "read from channel failed: ", err)
+//			l.Errorf("CHANNEL", "read from channel failed: ", err)
 //			err = errors.New("read channel panic")
 		}
 	}()
@@ -68,16 +73,16 @@ func (ch AnyChan) Read(l *log.Logger, t time.Duration) (re interface{}, err erro
 //	v: 向管道写入的变量
 //	l: 日志管理器
 //	t: 操作超时值，为0表示一直等待直至操作完成，否则等待特定时间直至超时
-func (ch AnyChan) Write(v interface{}, l *log.Logger, t time.Duration) (err error) {
+func (ch AnyChan) Write(v interface{}, l *Logger.Logger, t time.Duration) (err error) {
 	defer func() {
 		if e := recover(); e != nil {
 			str := fmt.Sprintf("%v", e)
 			if strings.Contains(str, "closed channel") {
 				err = CHERR_CLOSED
 			} else {
-				err = errors.New("write channel panic")
+				err = Errors.New("write channel panic")
 			}
-			l.Errorf("CHANNEL", "write into channel failed: ", e)
+//			l.Errorf("CHANNEL", "write into channel failed: ", e)
 		}
 	}()
 

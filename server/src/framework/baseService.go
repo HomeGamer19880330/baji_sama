@@ -17,14 +17,14 @@ import (
 //	"ximigame.com/component/log"
 //	"ximigame.com/component/net"
 //	"ximigame.com/component/net/cfgsync"
-	"server/component/NetCommunicator/NetClient"
-	"server/component/NetCommunicator/NetServer"
+	"component/NetCommunicator/NetClient"
+	"component/NetCommunicator/NetServer"
 //	"ximigame.com/component/oplog"
 //	"ximigame.com/component/process"
 //	"ximigame.com/component/reportdata"
 //	"ximigame.com/component/routinepool"
 //	"ximigame.com/component/timer"
-	"server/framework"
+//	"framework"
 //	msg "ximigame.com/types/proto"
 //	"ximigame.com/types/proto/config"
 //	"ximigame.com/utils"
@@ -67,7 +67,7 @@ type BaseService struct {
 	mainFrameWork *framework.FrameWork      //记录框架实例
 //	ServiceID     uint32                    //保存服务id
 //	cliCfgMap     map[string]uint32         //记录客户端组件的配置名和服务类型的映射关系
-//	CP            map[uint32]*client.Client //所有客户端组件，key为服务类型
+	clientMap     map[uint32]*client.Client //所有客户端组件，key为服务类型
 //	OL            *oplog.OpLogger           //运营日志组件
 //	TaskPool      *routinepool.RoutinePool  //消息处理协程池
 //	StatusWrapper *reportdata.StatusWrapper //上报数据到状态服
@@ -268,12 +268,14 @@ func (self *BaseService) SetupNetwork() (int, error) {
 		return -1, e
 	}
 
-//启动客户端组件
-//serverId := s.Svr.GetServerId()
-//for cfgName, svrType := range s.cliCfgMap {
-//s.CP[svrType] = client.NewClient(cfgName, s.Log, serverId, s)
-//s.CP[svrType].Start()
-//}
+	//启动客户端组件
+	//原著中所有客户端SERVICE都有一个CFG同步组件CfgSync,启动后连接配置中心,从配置中心下载最新的连接配置放在deploy路径下,
+	//deploy路径下的Addr: "127.0.0.1:15000" SvrType: 3 记录配置中心的IP地址和端口号,以及此服务的配置类型
+//	serverId := self.Svr.GetServerId()
+//	for cfgName, svrType := range s.cliCfgMap {
+	self.clientMap[1] = client.NewClient(cfgName, s.Log, serverId, s)
+	self.clientMap[1].Start()
+//	}
 //
 ////初始化运营日志组件
 //logCli, exists := s.CP[uint32(msg.SvrType_LOG)]

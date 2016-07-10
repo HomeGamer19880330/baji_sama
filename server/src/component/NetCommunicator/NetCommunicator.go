@@ -1,20 +1,31 @@
 package NetCommunicator
 
 import (
-//	"encoding/binary"
+	"encoding/binary"
 	"fmt"
-//	"io"
+	"io"
 	"net"
 //	"sync"
 //	"dawn"
 	"time"
 )
 
+import (
+	"component/safechan"
+)
 var (
 	maxSilentTime uint64       = 60 * 3 // 连接静默的最长时间，3分钟,因为有心跳存在,所以如果不是僵尸死连接也不至于出现这种3分钟静默的情况
-}
+)
+
+const (
+	socketBufSize = 64 << 10 // 消息缓冲区64K
+	headSize      = 8        // 消息头占用字节数 size(4) + magic_number(2) + msg_type(2)
+	magicNumber   = 0xdaff   // 协议头魔数"dawn 拂晓"
+)
+
+
 // 连接建立时调用的回调函数原型
-type OnNewConnFunc func(c *Connect)
+type OnNewConnFunc func(c *ConnBetweenTwoComputer)
 
 type NetMsg struct {
 	MsgType uint16 // 消息类型
@@ -39,16 +50,16 @@ type ConnectInfo struct {
 
 //一个真实两台机器连接,以及他们之间收发消息的处理
 type ConnBetweenTwoComputer struct {
-	connectInfo         *Connect            // 网络通信类型
+	connectInfo         *ConnectInfo            // 网络通信类型
 	isClosed            bool              // 标明该连接是否已关闭
-	closeReason         CloseReason       // 连接关闭原因
+//	closeReason         CloseReason       // 连接关闭原因
 	inPipe              safechan.AnyChan  // 接收消息通道
 	outPipe             safechan.AnyChan  // 发送消息通道
 	conn                net.Conn          // tcp/udp连接
 	id                  uint32            // 连接id
 //	disconnCallbackFunc func(interface{}) // 连接异常断开的通知回调函数
 //	disconnCallbackArg  interface{}       // 调用模块的私有参数
-//	lastRecvTimeStamp   int64             // 记录socket上次收包的时间戳
+	lastRecvTimeStamp   int64             // 记录socket上次收包的时间戳
 	aboutToClose        bool              // 标记该连接为将管道中的消息发送后即关闭
 	sendbuf             []byte            // 消息发送缓存
 	recvbuf             []byte            // 消息收取缓存
@@ -65,7 +76,8 @@ func newConnBetweenTwoComputer (connectInfo *ConnectInfo, conn net.Conn) *ConnBe
 //	logger.Debugf(newconn.commu.connType, "established new con %s", newconn)
 //	connectInfo.wgRecvConns.Add(1)
 	go newconn.recv()
-	if connectInfo.isTCP || !connectInfo.isServer {
+//	connectInfo.isTCP ||
+	if !connectInfo.isServer {
 		// udp服务器暂时只能作为数据接收方，因此不启动发送协程
 //		c.wgSendConns.Add(1)
 		go newconn.send()
@@ -80,8 +92,8 @@ func newConnBetweenTwoComputer (connectInfo *ConnectInfo, conn net.Conn) *ConnBe
 //	return 100
 //}
 
-func NewConnect(isServer bool, connType string, addr string) *Connect {
-	connect := new(Connect)
+func NewConnectInfo(isServer bool, connType string, addr string) *ConnectInfo {
+	connect := new(ConnectInfo)
 	connect.isServer = isServer
 	ipAddr, error := net.ResolveTCPAddr(connType, addr)
 	if error != nil {
@@ -144,7 +156,7 @@ func (self *ConnBetweenTwoComputer) recv(){
 			self.closeNow(true, false)
 		}
 
-		if self.IsClosed() || self.aboutToClose {
+		if self.isClosed || self.aboutToClose {
 			return
 		}
 
@@ -170,8 +182,8 @@ func (self *ConnBetweenTwoComputer) recv(){
 //					return
 //				}
 			}
-
-			if self.connectInfo.isServer && self.connectInfo.isTCP {
+//&& self.connectInfo.isTCP
+			if self.connectInfo.isServer {
 				if err == nil {
 					self.lastRecvTimeStamp = currentTimeStamp
 				} else if currentTimeStamp-self.lastRecvTimeStamp > int64(maxSilentTime) {
@@ -189,7 +201,7 @@ func (self *ConnBetweenTwoComputer) recv(){
 			}
 
 			// 判断是否接收到完整的消息报文，没有则继续收取
-			size := binary.BigEndian.Uint32(c.recvbuf[:4])
+			size := binary.BigEndian.Uint32(self.recvbuf[:4])
 			if size <= headSize || size >= socketBufSize {
 //				logger.Errorf(c.commu.connType,
 //					"invalid packet size %d, close invalid connection %v", size, c)
@@ -206,7 +218,7 @@ func (self *ConnBetweenTwoComputer) recv(){
 
 		readOffset = 0
 		for {
-			size := binary.BigEndian.Uint32(c.recvbuf[readOffset : readOffset+4])
+			size := binary.BigEndian.Uint32(self.recvbuf[readOffset : readOffset+4])
 			if size >= socketBufSize {
 //				logger.Errorf(c.commu.connType,
 //					"packet size too large %d, close invalid connection, %v", size, c)
@@ -214,14 +226,14 @@ func (self *ConnBetweenTwoComputer) recv(){
 				return
 			}
 
-			magic := binary.BigEndian.Uint16(c.recvbuf[readOffset+4 : readOffset+6])
+			magic := binary.BigEndian.Uint16(self.recvbuf[readOffset+4 : readOffset+6])
 			if magic != uint16(magicNumber) {
 //				logger.Errorf(c.commu.connType, "invalid magic number %x", magic)
 				self.closeNow(false, false)
 				return
 			}
 
-			msgtype := binary.BigEndian.Uint16(c.recvbuf[readOffset+6 : readOffset+headSize])
+			msgtype := binary.BigEndian.Uint16(self.recvbuf[readOffset+6 : readOffset+headSize])
 
 			// 向收取管道中添加新的消息体
 			data := make([]byte, size-headSize)
@@ -311,7 +323,7 @@ func (self *ConnBetweenTwoComputer) send() {
 	self.sendbuf = make([]byte, 0, socketBufSize*2)
 
 	for {
-		if self.IsClosed() {
+		if self.isClosed {
 			return
 		}
 
@@ -332,7 +344,7 @@ func (self *ConnBetweenTwoComputer) send() {
 		// 向socket发送报文
 		sendLen, err := self.conn.Write(self.sendbuf)
 		if err != nil || sendLen != len(self.sendbuf) {
-			if !self.IsClosed() {
+			if !self.isClosed {
 //				logger.Errorf(c.commu.connType,
 //					"write con %v failed: %s, close invalid connection", c, err)
 				self.closeNow(false, false)
@@ -415,9 +427,9 @@ func listen(c *ConnectInfo, f OnNewConnFunc) {
 		con.(*net.TCPConn).SetKeepAlive(true)
 		con.(*net.TCPConn).SetKeepAlivePeriod(time.Minute)
 		
-		c.netConnector = con
+//		c.netConnector = con
 		// 通知调用模块新连接的建立
-		f(c)
+		f(newConnBetweenTwoComputer(c, con))
 	}
 }
 
@@ -447,9 +459,9 @@ func startTCPClient(c *ConnectInfo, f OnNewConnFunc) {
 //				continue
 				return
 			}
-			c.netConnector = con
+//			c.netConnector = con
 			// 通知调用模块新连接的建立
-			f(c)
+			f(newConnBetweenTwoComputer(c, con))
 //		}
 	}()
 }
@@ -484,4 +496,83 @@ func (self *ConnBetweenTwoComputer) closeNow(normalClose bool, isEOF bool) {
 //			c.disconnCallbackFunc(c.disconnCallbackArg)
 //		}
 	}
+}
+
+
+// 发送消息包至消息管道，成功返回true，超时或失败则返回false;
+// 参数d为0表示消息发送会阻塞直至成功返回
+func (self *ConnBetweenTwoComputer) SendMsg(msg *NetMsg, d time.Duration) error {
+//	if self.aboutToClose {
+//		logger.Errorf(c.commu.connType, "connection about to close")
+//		return errors.New("connection about to close")
+//	}
+//
+//	if self.isClosed {
+//		logger.Errorf(c.commu.connType, "connection already closed")
+//		return errors.New("connection closed")
+//	}
+//
+//	if !self.commu.isTCP && self.commu.isServer {
+//		logger.Errorf(c.commu.connType, "udp server doesn't support sending message yet!")
+//		return errors.New("udp server can't send msg")
+//	}
+//
+//	if len(msg.Data) == 0 || len(msg.Data) >= socketBufSize-headSize {
+//		logger.Errorf(c.commu.connType, "invalid msg len %d", len(msg.Data))
+//		return errors.New("invalid msg format")
+//	}
+
+	// 添加消息头
+//	http://blog.csdn.net/sunshine1314/article/details/2309655
+	packet := make([]byte, len(msg.Data)+headSize)
+	binary.BigEndian.PutUint32(packet[0:4], uint32(len(msg.Data)+headSize))
+	binary.BigEndian.PutUint16(packet[4:6], uint16(magicNumber))
+	binary.BigEndian.PutUint16(packet[6:headSize], msg.MsgType)
+	copy(packet[headSize:], msg.Data)
+
+	err := self.outPipe.Write(packet, nil, d)
+	if err != nil {
+//		logger.Errorf(c.commu.connType, "write failed: %s", err)
+		return err
+	}
+	return nil
+}
+
+// 发送信令，主要用于客户端组件和服务端组件之间的控制协议
+//func (self *ConnBetweenTwoComputer) SendCmd(data []byte, d time.Duration) error {
+//	return self.SendMsg(NewNetMsg(uint16(proto.MsgType_CMD), data), d)
+//}
+
+// 发送正常通信协议
+func (self *ConnBetweenTwoComputer) SendNormalMsg(data []byte, d time.Duration) error {
+//	if logger.GetLevel() == log.DEBUG {
+//		var m proto.Msg
+//		e := protobuf.Unmarshal(data, &m)
+//		if e == nil && m.GetHeader().GetSHeader().GetSeq() == 0 {
+//			m.GetHeader().GetSHeader().Seq = protobuf.Uint32(uuidGen.GenID())
+//			m.GetHeader().GetSHeader().TimeStamp =
+//			protobuf.Uint64(uint64(time.Now().UnixNano()))
+//			data, _ = protobuf.Marshal(&m)
+//		}
+//	}
+	return self.SendMsg(NewNetMsg(uint16(0), data), d)
+}
+
+// 从消息管道中获取消息包，成功返回消息切片和nil，超时或失败则返回nil和错误;
+// 参数d为0表示在没有消息可收的情况下马上返回nil和空管道错误
+func (self *ConnBetweenTwoComputer) RecvMsg(d time.Duration) (*NetMsg, error) {
+	msg, err := self.inPipe.Read(nil, d)
+//	if err != nil {
+		//		if err != safechan.CHERR_TIMEOUT && err != safechan.CHERR_EMPTY {
+		//		logger.Errorf(c.commu.connType, "read failed: %s", err)
+		//		}
+		//		return nil, err
+//	}
+
+	re, ok := msg.(*NetMsg)
+	if !ok {
+		//		logger.Errorf(c.commu.connType, "invalid msg type %v", msg)
+		return nil, err
+	}
+	return re, nil
 }

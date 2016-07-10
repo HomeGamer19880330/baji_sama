@@ -15,7 +15,7 @@ import (
 //protobuf "github.com/golang/protobuf/proto"
 //cfgMgr "ximigame.com/component/cfg"
 //"ximigame.com/component/log"
-	"server/component/NetCommunicator"
+	"component/NetCommunicator"
 //"ximigame.com/component/uuid"
 //"ximigame.com/framework"
 //"ximigame.com/types/proto"
@@ -176,54 +176,57 @@ func (self *NetServer) connJob(communicator *NetCommunicator.NetCommunicator) {
 		if recvErr != nil {
 			continue
 		}
+		fmt.Printf("server recieve message", msg.Data)
+//if msg.MsgType == uint16(proto.MsgType_CMD) {
+//if s.isGateway {
+//// 接入服不可能收到信令
+//s.logger.Errorf(logTag, "invalid msg from client %s", conn)
+//return
+//}
+//if e := protobuf.Unmarshal(msg.Data, cmd); e != nil {
+//s.logger.Errorf(logTag, "decode cmd on con %s failed!", conn)
+//return
+//}
+//if *cmd.Cmd != proto.CmdID_KEEPALIVE {
+//s.logger.Errorf(logTag, "invalid cmd id %d on con %s", *cmd.Cmd, conn)
+//return
+//}
+//if *cmd.DstServiceID != s.serverId {
+//s.logger.Errorf(logTag, "invalid server id %d, %d on con %s",
+//*cmd.DstServiceID, s.serverId, conn)
+//return
+//}
+//lastNotifyTime = time.Now().Unix()
+//} else {
+//if s.isGateway {
+//// 解码消息并加添加nethead头信息
+//var m proto.Msg
+//if err := protobuf.Unmarshal(msg.Data, &m); err != nil {
+//s.logger.Errorf(logTag, "decode msg failed, %s", err)
+//return
+//}
+//header := m.GetHeader()
+//header.NHeader = s.GenNetHead(conn, nil)
+//data, err := protobuf.Marshal(&m)
+//if err != nil {
+//s.logger.Errorf(logTag, "marshal msg failed, %s", err)
+//return
+//}
+//msg.Data = data
+//}
+//
+//if e := s.msgProc.OnNewMsg(msg.Data); e != nil {
+//s.logger.Errorf(logTag, "process msg failed: %s", e)
+//continue
+//}
+//}
+	}
+}
 
-if msg.MsgType == uint16(proto.MsgType_CMD) {
-if s.isGateway {
-// 接入服不可能收到信令
-s.logger.Errorf(logTag, "invalid msg from client %s", conn)
-return
-}
-if e := protobuf.Unmarshal(msg.Data, cmd); e != nil {
-s.logger.Errorf(logTag, "decode cmd on con %s failed!", conn)
-return
-}
-if *cmd.Cmd != proto.CmdID_KEEPALIVE {
-s.logger.Errorf(logTag, "invalid cmd id %d on con %s", *cmd.Cmd, conn)
-return
-}
-if *cmd.DstServiceID != s.serverId {
-s.logger.Errorf(logTag, "invalid server id %d, %d on con %s",
-*cmd.DstServiceID, s.serverId, conn)
-return
-}
-lastNotifyTime = time.Now().Unix()
-} else {
-if s.isGateway {
-// 解码消息并加添加nethead头信息
-var m proto.Msg
-if err := protobuf.Unmarshal(msg.Data, &m); err != nil {
-s.logger.Errorf(logTag, "decode msg failed, %s", err)
-return
-}
-header := m.GetHeader()
-header.NHeader = s.GenNetHead(conn, nil)
-data, err := protobuf.Marshal(&m)
-if err != nil {
-s.logger.Errorf(logTag, "marshal msg failed, %s", err)
-return
-}
-msg.Data = data
-}
 
-if e := s.msgProc.OnNewMsg(msg.Data); e != nil {
-s.logger.Errorf(logTag, "process msg failed: %s", e)
-continue
-}
-}
-}
-}
 
-// 启动服务端组件
+
+	// 启动服务端组件
 func (self *NetServer) Start() (err error) {
 	//s.mu.Lock()
 	//defer s.mu.Unlock()
@@ -253,7 +256,7 @@ func (self *NetServer) Start() (err error) {
 //		return
 //	}
 //	s.isGateway = *cfg.IsGateway
-
+//	serverAddr    string =
 	self.netCommunicator = NetCommunicator.NewConnect(true, "tcp", "127.0.0.1:15000")
 //		int(*cfg.RecvLimit), int(*cfg.SendLimit))
 	if self.netCommunicator == nil {

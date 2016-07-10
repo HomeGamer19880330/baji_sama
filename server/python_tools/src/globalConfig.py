@@ -68,23 +68,26 @@ g_service_dir = os.path.join(g_project_root_dir, "service")
 # sys.path.append(g_py_config_dir)
 # sys.path.append(os.path.join(g_py_config_dir, "table_config"))
 
-SERVICES_LIST = ["cfgcenter",
-"oplogs",
-"toplist",
-"recharge",
-"coredata_data",
-"coredata_logic",
-"statuskeeper",
-"auth",
-"hall",
-"version",
-"gateway",
-"gamelist",
-"matchsign",
-"gamegw",
-"social",
-"gamemaster",
-"minigames"]
+# SERVICES_LIST = ["cfgcenter",
+# "oplogs",
+# "toplist",
+# "recharge",
+# "coredata_data",
+# "coredata_logic",
+# "statuskeeper",
+# "auth",
+# "hall",
+# "version",
+# "gateway",
+# "gamelist",
+# "matchsign",
+# "gamegw",
+# "social",
+# "gamemaster",
+# "minigames"]
+
+SERVICES_LIST = ["gameserver"
+]
 
 if __name__ == "__main__":
     print g_current_dir
