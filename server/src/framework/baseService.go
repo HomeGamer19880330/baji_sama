@@ -3,75 +3,59 @@ package framework
 //基础服务实现
 //package base
 
-import (
-	"fmt"
-	"reflect"
-	"runtime"
-	"strings"
-	"time"
-)
+// import (
+// 	"fmt"
+// 	"reflect"
+// 	"runtime"
+// 	"strings"
+// 	"time"
+// )
 
 import (
-//	"github.com/golang/protobuf/proto"
-//	"ximigame.com/component/cfg"
-//	"ximigame.com/component/log"
-//	"ximigame.com/component/net"
-//	"ximigame.com/component/net/cfgsync"
+	//	"github.com/golang/protobuf/proto"
+	//	"ximigame.com/component/cfg"
+	//	"ximigame.com/component/log"
+	//	"ximigame.com/component/net"
+	//	"ximigame.com/component/net/cfgsync"
 	"component/NetCommunicator/NetClient"
 	"component/NetCommunicator/NetServer"
-//	"ximigame.com/component/oplog"
-//	"ximigame.com/component/process"
-//	"ximigame.com/component/reportdata"
-//	"ximigame.com/component/routinepool"
-//	"ximigame.com/component/timer"
-//	"framework"
-//	msg "ximigame.com/types/proto"
-//	"ximigame.com/types/proto/config"
-//	"ximigame.com/utils"
-//	"ximigame.com/utils/errors"
+	"component/Utils/Errors"
+	//	"ximigame.com/component/oplog"
+	//	"ximigame.com/component/process"
+	//	"ximigame.com/component/reportdata"
+	//	"ximigame.com/component/routinepool"
+	//	"ximigame.com/component/timer"
+	//	"framework"
+	//	msg "ximigame.com/types/proto"
+	//	"ximigame.com/types/proto/config"
+	//	"ximigame.com/utils"
+	//	"ximigame.com/utils/errors"
 )
-
-//服务接口
-type ServiceInterface interface {
-	//	MsgProcessor
-	Init(*FrameWork) (int, error)                                //初始化
-	//	RegisterCfg() (int, error)                                   //注册配置
-	//	SetLogLevel()                                                //设置日志等级
-	SetupNetwork() (int, error)                                  //启动网络
-	//	ProcessHttpCmd(h *process.HttpContext)                       //处理http命令
-	//	ProcessTimer(tn *timer.TimeoutNotify)                        //处理定时器超时
-	//	ProcessMsg(buff []byte) error                                //处理消息
-	//	OnReload()                                                   //重载
-	//	OnExit()                                                     //退出
-	//	OnNetDisconn(conn *net.Conn)                                 //网络连接异常断开
-	//	MainLoop()                                                   //主循环
-	//	RegisterMsgHandle()                                          //注册所有消息处理
-	//	RegOneMsgHandle(msgId uint32, handle MsgHandle) (int, error) //注册一个消息处理
-}
 
 //基础服务
 type BaseService struct {
-//	Proc          *process.Process          //进程管理组件
-//	Log           *log.Logger               //运行日志组件
-//	Cfg           *cfg.CfgMng               //本地配置管理组件
-//	CfgSync       *cfgsync.CfgSync          //远程配置同步组件
-//	UseLocalCfg   bool                      //使用本地配置
-//	TM            *timer.TimerManager       //定时器管理组件
-	serverInstance           *NetServer.NetServer            //网络服务组件
-//	CM            *ConnMng                  //服务连接管理器
-//	ReloadChan    chan int                  //用于通讯的各种管道, 接收重载信号的管道
-	ExitChan      chan int                  //接收退出信号的管道
-//	HttpChan      chan *process.HttpContext //接收http命令的管道
-//	TNChan        chan *timer.TimeoutNotify //接收定时器超时通知的管道
-//	MP            MsgMap                    //消息映射
-	mainFrameWork *framework.FrameWork      //记录框架实例
-//	ServiceID     uint32                    //保存服务id
-//	cliCfgMap     map[string]uint32         //记录客户端组件的配置名和服务类型的映射关系
-	clientMap     map[uint32]*client.Client //所有客户端组件，key为服务类型
-//	OL            *oplog.OpLogger           //运营日志组件
-//	TaskPool      *routinepool.RoutinePool  //消息处理协程池
-//	StatusWrapper *reportdata.StatusWrapper //上报数据到状态服
-//	Perf          *PerfMon                  //性能监控
+	// ServiceInterface
+	//	Proc          *process.Process          //进程管理组件
+	//	Log           *log.Logger               //运行日志组件
+	//	Cfg           *cfg.CfgMng               //本地配置管理组件
+	//	CfgSync       *cfgsync.CfgSync          //远程配置同步组件
+	//	UseLocalCfg   bool                      //使用本地配置
+	//	TM            *timer.TimerManager       //定时器管理组件
+	serverInstance *NetServer.NetServer //网络服务组件
+	//	CM            *ConnMng                  //服务连接管理器
+	//	ReloadChan    chan int                  //用于通讯的各种管道, 接收重载信号的管道
+	ExitChan chan int //接收退出信号的管道
+	//	HttpChan      chan *process.HttpContext //接收http命令的管道
+	//	TNChan        chan *timer.TimeoutNotify //接收定时器超时通知的管道
+	//	MP            MsgMap                    //消息映射
+	mainFrameWork *FrameWork //记录框架实例
+	//	ServiceID     uint32                    //保存服务id
+	//	cliCfgMap     map[string]uint32         //记录客户端组件的配置名和服务类型的映射关系
+	clientMap map[uint32]*NetClient.NetClient //所有客户端组件，key为服务类型
+	//	OL            *oplog.OpLogger           //运营日志组件
+	//	TaskPool      *routinepool.RoutinePool  //消息处理协程池
+	//	StatusWrapper *reportdata.StatusWrapper //上报数据到状态服
+	//	Perf          *PerfMon                  //性能监控
 }
 
 const (
@@ -81,102 +65,104 @@ const (
 )
 
 //实现Service接口:初始化函数
-func (self *BaseService) Init(mainFrameWrok_ *framework.FrameWork) (int, error) {
-		//创建各个管道
-//		s.ReloadChan = make(chan int, 1)
-		s.ExitChan = make(chan int, 1)
-//		s.HttpChan = make(chan *process.HttpContext)
-//		s.TNChan = make(chan *timer.TimeoutNotify, DefaultTNChanSize)
-//
-//		s.MP = NewMsgMap()
+func (self *BaseService) Init(mainFrameWrok_ *FrameWork) (int, error) {
+	//创建各个管道
+	//		s.ReloadChan = make(chan int, 1)
+	self.ExitChan = make(chan int, 1)
+	//		s.HttpChan = make(chan *process.HttpContext)
+	//		s.TNChan = make(chan *timer.TimeoutNotify, DefaultTNChanSize)
+	//
+	//		s.MP = NewMsgMap()
 	self.mainFrameWork = mainFrameWrok_
-//
-//		//初始化客户端组件表
-//		s.cliCfgMap = make(map[string]uint32)
-//		s.CP = make(map[uint32]*client.Client)
-//
-//		//初始化进程管理组件
-//		s.Proc = process.Instance()
-//		_, e := s.Proc.Initialize("", "", "", "", s)
-//		if e != nil {
-//		panic(e.Error())
-//		}
-//
-//		//初始化日志组件
-//		s.Log = log.NewFileLogger(s.Proc.Name, s.Proc.DefaultLogDir, "")
-//		if s.Log == nil {
-//		panic("init logger failed")
-//		}
-//
-//		defer log.FlushAll()
-//
-//		//设置日志等级
-//		s.FW.Service.SetLogLevel()
-//
-//		//记录服务启动事件
-//		s.Log.Infof(LogTag, "%s starting...", s.Proc.Name)
-//
-//		//初始化配置管理组件
-//		s.Cfg = cfg.Instance()
-//		s.Cfg.Initialize("", s.Log)
-//
-//		//远程配置同步组件初始化
-//		s.CfgSync = cfgsync.Instance()
-//		s.CfgSync.Initialize(s.Proc, s.Log, s.UseLocalCfg)
-//		s.CfgSync.Start(s)
-//
-//		//注册配置
-//		_, e = s.FW.Service.RegisterCfg()
-//		if e != nil {
-//		s.Log.Errorf(LogTag, "%s register cfg failed: %s", s.Proc.Name, e.Error())
-//		return -1, e
-//		}
-//
-//		//初始装载所有配置
-//		_, e = s.Cfg.InitLoadAll()
-//		if e != nil {
-//		s.Log.Errorf(LogTag, "%s load cfg failed: %s", s.Proc.Name, e.Error())
-//		return -1, e
-//		}
-//
-//		//初始化定时器管理组件
-//		s.TM = timer.Instance()
-//		s.TM.Initialize(s.TNChan, s.Log)
-//
-//		//打印服务基本信息
-//		fmt.Print(s.Proc)
-//
-//		//打印所有配置
-//		s.Cfg.PrintAll()
-//
-//		//服务后台化
-//		_, e = s.Proc.Daemonize()
-//		if e != nil {
-//		s.Log.Errorf(LogTag, "%s daemonize failed: %s", s.Proc.Name, e.Error())
-//		return -1, e
-//		}
-//
-//		//注册消息处理
-//		s.FW.Service.RegisterMsgHandle()
-//
-//		//启动任务处理协程池
-//		s.TaskPool = routinepool.NewPool(DefaultTaskPoolSize).Start()
-//
-//		//初始化性能监控
-//		s.Perf = NewPerfMon(s)
+	//
+	//		//初始化客户端组件表
+	//		s.cliCfgMap = make(map[string]uint32)
+	//		s.CP = make(map[uint32]*client.Client)
+	//
+	//		//初始化进程管理组件
+	//		s.Proc = process.Instance()
+	//		_, e := s.Proc.Initialize("", "", "", "", s)
+	//		if e != nil {
+	//		panic(e.Error())
+	//		}
+	//
+	//		//初始化日志组件
+	//		s.Log = log.NewFileLogger(s.Proc.Name, s.Proc.DefaultLogDir, "")
+	//		if s.Log == nil {
+	//		panic("init logger failed")
+	//		}
+	//
+	//		defer log.FlushAll()
+	//
+	//		//设置日志等级
+	//		s.FW.Service.SetLogLevel()
+	//
+	//		//记录服务启动事件
+	//		s.Log.Infof(LogTag, "%s starting...", s.Proc.Name)
+	//
+	//		//初始化配置管理组件
+	//		s.Cfg = cfg.Instance()
+	//		s.Cfg.Initialize("", s.Log)
+	//
+	//		//远程配置同步组件初始化
+	//		s.CfgSync = cfgsync.Instance()
+	//		s.CfgSync.Initialize(s.Proc, s.Log, s.UseLocalCfg)
+	//		s.CfgSync.Start(s)
+	//
+	//		//注册配置
+	//		_, e = s.FW.Service.RegisterCfg()
+	//		if e != nil {
+	//		s.Log.Errorf(LogTag, "%s register cfg failed: %s", s.Proc.Name, e.Error())
+	//		return -1, e
+	//		}
+	//
+	//		//初始装载所有配置
+	//		_, e = s.Cfg.InitLoadAll()
+	//		if e != nil {
+	//		s.Log.Errorf(LogTag, "%s load cfg failed: %s", s.Proc.Name, e.Error())
+	//		return -1, e
+	//		}
+	//
+	//		//初始化定时器管理组件
+	//		s.TM = timer.Instance()
+	//		s.TM.Initialize(s.TNChan, s.Log)
+	//
+	//		//打印服务基本信息
+	//		fmt.Print(s.Proc)
+	//
+	//		//打印所有配置
+	//		s.Cfg.PrintAll()
+	//
+	//		//服务后台化
+	//		_, e = s.Proc.Daemonize()
+	//		if e != nil {
+	//		s.Log.Errorf(LogTag, "%s daemonize failed: %s", s.Proc.Name, e.Error())
+	//		return -1, e
+	//		}
+	//
+	//		//注册消息处理
+	//		s.FW.Service.RegisterMsgHandle()
+	//
+	//		//启动任务处理协程池
+	//		s.TaskPool = routinepool.NewPool(DefaultTaskPoolSize).Start()
+	//
+	//		//初始化性能监控
+	//		s.Perf = NewPerfMon(s)
 
 	//启动网络组件
-	errorCode, e = self.SetupNetwork()
-	if e != nil {
-//		s.Log.Errorf(LogTag, "%s set up network failed: %s", s.Proc.Name, e.Error())
-		return -1, e
-	}
+	self.SetupNetwork()
+	// errorCode, e =
+	// if e != nil {
+	// 	//		s.Log.Errorf(LogTag, "%s set up network failed: %s", s.Proc.Name, e.Error())
+	// 	return -1, e
+	// }
 
 	//记录服务启动完成日志
-//	s.Log.Infof(LogTag, "%s started", s.Proc.Name)
+	//	s.Log.Infof(LogTag, "%s started", s.Proc.Name)
 
 	return 0, nil
 }
+
 //
 ////实现Service接口:注册所有配置
 //func (s *BaseService) RegisterCfg() (int, error) {
@@ -248,20 +234,20 @@ func (self *BaseService) Init(mainFrameWrok_ *framework.FrameWork) (int, error) 
 //实现ServiceInterface接口:启动网络
 func (self *BaseService) SetupNetwork() (int, error) {
 	//创建并初始化连接管理器
-//	s.CM = new(ConnMng)
-//	if e := s.CM.Init(s.FW.Service, s.Log); e != nil {
-//		return -1, e
-//	}
+	//	s.CM = new(ConnMng)
+	//	if e := s.CM.Init(s.FW.Service, s.Log); e != nil {
+	//		return -1, e
+	//	}
 
 	//启动服务端组件
 	self.serverInstance = NetServer.Instance()
 	if self.serverInstance == nil {
-		return -1, errors.New("get server instance failed")
+		return -1, Errors.New("get server instance failed")
 	}
 	if !self.serverInstance.Initialize() {
-//		s.CM,
-//	strings.TrimSuffix(cfgsync.SvrDeployFile, ".cfg"), s.Log, s)
-		return -1, errors.New("server init failed")
+		//		s.CM,
+		//	strings.TrimSuffix(cfgsync.SvrDeployFile, ".cfg"), s.Log, s)
+		return -1, Errors.New("server init failed")
 	}
 	e := self.serverInstance.Start()
 	if e != nil {
@@ -271,29 +257,30 @@ func (self *BaseService) SetupNetwork() (int, error) {
 	//启动客户端组件
 	//原著中所有客户端SERVICE都有一个CFG同步组件CfgSync,启动后连接配置中心,从配置中心下载最新的连接配置放在deploy路径下,
 	//deploy路径下的Addr: "127.0.0.1:15000" SvrType: 3 记录配置中心的IP地址和端口号,以及此服务的配置类型
-//	serverId := self.Svr.GetServerId()
-//	for cfgName, svrType := range s.cliCfgMap {
-	self.clientMap[1] = client.NewClient(cfgName, s.Log, serverId, s)
+	//	serverId := self.Svr.GetServerId()
+	//	for cfgName, svrType := range s.cliCfgMap {
+	self.clientMap[1] = NetClient.NewClient("holy")
 	self.clientMap[1].Start()
-//	}
-//
-////初始化运营日志组件
-//logCli, exists := s.CP[uint32(msg.SvrType_LOG)]
-//if exists {
-//s.OL = oplog.Instance()
-//s.OL.Initialize(logCli, s.Log)
-//}
-////状态服务组件
-//{
-//statusKeeperCli, exists := s.CP[uint32(msg.SvrType_StatusKeeper)]
-//if exists {
-//s.StatusWrapper = reportdata.Instance()
-//s.StatusWrapper.Initialize(statusKeeperCli, s.Log)
-//}
-//}
+	//	}
+	//
+	////初始化运营日志组件
+	//logCli, exists := s.CP[uint32(msg.SvrType_LOG)]
+	//if exists {
+	//s.OL = oplog.Instance()
+	//s.OL.Initialize(logCli, s.Log)
+	//}
+	////状态服务组件
+	//{
+	//statusKeeperCli, exists := s.CP[uint32(msg.SvrType_StatusKeeper)]
+	//if exists {
+	//s.StatusWrapper = reportdata.Instance()
+	//s.StatusWrapper.Initialize(statusKeeperCli, s.Log)
+	//}
+	//}
 
-return 0, nil
+	return 0, nil
 }
+
 //
 ////实现Service接口:新消息到来
 //func (s *BaseService) OnNewMsg(buff []byte) error {
@@ -436,16 +423,16 @@ return 0, nil
 func (self *BaseService) MainLoop() {
 	for {
 		select {
-//			case <-s.ReloadChan: //重载配置
-//				s.FW.Service.OnReload()
-			case <-s.ExitChan: //进程退出
-				s.FW.Service.OnExit()
-				return
-//			case http := <-s.HttpChan: //http命令
-//				s.FW.Service.ProcessHttpCmd(http)
-//				s.HttpChan <- nil
-//			case tn := <-s.TNChan: //定时器超时
-//				s.FW.Service.ProcessTimer(tn)
+		//			case <-s.ReloadChan: //重载配置
+		//				s.FW.Service.OnReload()
+		case <-self.ExitChan: //进程退出
+			// self.OnExit()
+			return
+			//			case http := <-s.HttpChan: //http命令
+			//				s.FW.Service.ProcessHttpCmd(http)
+			//				s.HttpChan <- nil
+			//			case tn := <-s.TNChan: //定时器超时
+			//				s.FW.Service.ProcessTimer(tn)
 		}
 	}
 }

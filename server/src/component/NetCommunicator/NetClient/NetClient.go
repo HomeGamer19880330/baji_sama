@@ -7,68 +7,69 @@ package NetClient
 
 import (
 	"fmt"
-	"sync"
+	//"sync"
 	"time"
 )
 
 import (
-//	protobuf "github.com/golang/protobuf/proto"
-//	cfgMgr "ximigame.com/component/cfg"
-//	dao "ximigame.com/component/dao/types"
-//	"ximigame.com/component/log"
+	//	protobuf "github.com/golang/protobuf/proto"
+	//	cfgMgr "ximigame.com/component/cfg"
+	//	dao "ximigame.com/component/dao/types"
+	//	"ximigame.com/component/log"
 	"component/NetCommunicator"
-//	"ximigame.com/framework"
-//	"ximigame.com/types/proto"
-//	protoCfg "ximigame.com/types/proto/config"
-//	"ximigame.com/utils"
-//	"ximigame.com/utils/errors"
+	"component/Utils/Errors"
+	//	"ximigame.com/framework"
+	//	"ximigame.com/types/proto"
+	//	protoCfg "ximigame.com/types/proto/config"
+	//	"ximigame.com/utils"
+	//	"ximigame.com/utils/errors"
 )
 
 // 客户端组件
 type NetClient struct {
-	connectInfo *NetCommunicator.ConnectInfo                 // 网络组件
+	connectInfo *NetCommunicator.ConnectInfo // 网络组件
 	clientName  string
-//	logger      *log.Logger                // 日志组件
-//	mu          sync.Mutex                 // 保护锁
-//	cfgName     string                     // 全局配置名
-//	isStarted   bool                       // 是否已启动
-//	robinIdx    int                        // 记录下次采用轮询调度时派发的服务器ID
-//	allSvrId    []uint32                   // 所有服务ID
-//	svrIdMap    map[string]uint32          // 服务地址到服务id的映射关系
-//	connMap     map[uint32]*net.Conn       // 连接管理
-//	routeTable  []int                      // 路由表
-//	msgProc     framework.MsgProcessor     // 消息处理方
-//	serverId    uint32                     // 客户端组件所属服务的id
-//	finiCheck   chan int                   // 通知巡检协程退出
-//	filterChans map[uint32]chan *proto.Msg // 消息过滤管道
-//	reloadChan  chan int                   // 通知重加载配置
-//	connOK      chan int                   // 通知所有连接建立成功
+	//	logger      *log.Logger                // 日志组件
+	//	mu          sync.Mutex                 // 保护锁
+	//	cfgName     string                     // 全局配置名
+	isStarted bool // 是否已启动
+	//	robinIdx    int                        // 记录下次采用轮询调度时派发的服务器ID
+	//	allSvrId    []uint32                   // 所有服务ID
+	//	svrIdMap    map[string]uint32          // 服务地址到服务id的映射关系
+	//	connMap     map[uint32]*net.Conn       // 连接管理
+	//	routeTable  []int                      // 路由表
+	//	msgProc     framework.MsgProcessor     // 消息处理方
+	//	serverId    uint32                     // 客户端组件所属服务的id
+	//	finiCheck   chan int                   // 通知巡检协程退出
+	//	filterChans map[uint32]chan *proto.Msg // 消息过滤管道
+	//	reloadChan  chan int                   // 通知重加载配置
+	//	connOK      chan int                   // 通知所有连接建立成功
 }
 
 const (
-	maxServerNum = dao.TableNum
-	logTag       = "cli_com"
+	//maxServerNum = dao.TableNum
+	logTag = "cli_com"
 )
 
 // 分配并初始化客户端组件
 //	cfgName: 配置标识符
 //	logger: 日志管理器
 //	serverId: 服务id
-func NewClient(clientName) *NetClient {
+func NewClient(clientName string) *NetClient {
 	netClient := new(NetClient)
 	netClient.clientName = clientName
-//(cfgName string, logger *log.Logger,
-//	serverId uint32, proc framework.MsgProcessor) *Client {
-//	net.SetLogDir(logger.GetDir())
-//	c := new(Client)
-//	c.logger = logger
-//	c.cfgName = cfgName
-//	c.serverId = serverId
-//	c.msgProc = proc
-//	c.finiCheck = make(chan int, 1)
-//	c.filterChans = make(map[uint32]chan *proto.Msg, 10)
-//	c.reloadChan = make(chan int, 1)
-//	c.connOK = make(chan int, 1)
+	//(cfgName string, logger *log.Logger,
+	//	serverId uint32, proc framework.MsgProcessor) *Client {
+	//	net.SetLogDir(logger.GetDir())
+	//	c := new(Client)
+	//	c.logger = logger
+	//	c.cfgName = cfgName
+	//	c.serverId = serverId
+	//	c.msgProc = proc
+	//	c.finiCheck = make(chan int, 1)
+	//	c.filterChans = make(map[uint32]chan *proto.Msg, 10)
+	//	c.reloadChan = make(chan int, 1)
+	//	c.connOK = make(chan int, 1)
 	return netClient
 }
 
@@ -86,58 +87,59 @@ func (c *NetClient) connJob(conn *NetCommunicator.ConnBetweenTwoComputer) {
 	defer conn.Close()
 
 	// 保存连接
-//	c.mu.Lock()
-//	ip, port, _ := conn.RemoteAddr()
-//	id, exists := c.svrIdMap[fmt.Sprintf("%s:%d", ip, port)]
-//	if !exists {
-//		c.logger.Errorf(logTag, "got unexpected conn %s!", conn)
-//		c.mu.Unlock()
-//		return
-//	}
-//	conn.SetId(id)
-//	c.connMap[id] = conn
-//	c.mu.Unlock()
-//	defer func() {
-//		c.mu.Lock()
-//		delete(c.connMap, id)
-//		c.mu.Unlock()
-//	}()
-//
-//	c.logger.Debugf(logTag, "established new conn %s, svrIdMap:%v, connMap:%v, allSvrId:%v",
-//		conn, c.svrIdMap, c.connMap, c.allSvrId)
-//
-//	// 检查是否所有连接都已建立，是则发出通知
-//	if len(c.connMap) == len(c.allSvrId) && len(c.connOK) == 0 {
-//		c.connOK <- 0
-//	}
-//
-//	// 发送注册信令
-//	cmd := new(proto.CmdMsg)
-//	cmd.Cmd = proto.CmdID_REG.Enum()
-//	cmd.SrcServiceID = &c.serverId
-//	cmd.DstServiceID = protobuf.Uint32(id)
-//	buf, _ := protobuf.Marshal(cmd)
-//	conn.SendCmd(buf, 0)
+	//	c.mu.Lock()
+	//	ip, port, _ := conn.RemoteAddr()
+	//	id, exists := c.svrIdMap[fmt.Sprintf("%s:%d", ip, port)]
+	//	if !exists {
+	//		c.logger.Errorf(logTag, "got unexpected conn %s!", conn)
+	//		c.mu.Unlock()
+	//		return
+	//	}
+	//	conn.SetId(id)
+	//	c.connMap[id] = conn
+	//	c.mu.Unlock()
+	//	defer func() {
+	//		c.mu.Lock()
+	//		delete(c.connMap, id)
+	//		c.mu.Unlock()
+	//	}()
+	//
+	//	c.logger.Debugf(logTag, "established new conn %s, svrIdMap:%v, connMap:%v, allSvrId:%v",
+	//		conn, c.svrIdMap, c.connMap, c.allSvrId)
+	//
+	//	// 检查是否所有连接都已建立，是则发出通知
+	//	if len(c.connMap) == len(c.allSvrId) && len(c.connOK) == 0 {
+	//		c.connOK <- 0
+	//	}
+	//
+	//	// 发送注册信令
+	//	cmd := new(proto.CmdMsg)
+	//	cmd.Cmd = proto.CmdID_REG.Enum()
+	//	cmd.SrcServiceID = &c.serverId
+	//	cmd.DstServiceID = protobuf.Uint32(id)
+	//	buf, _ := protobuf.Marshal(cmd)
+	//	conn.SendCmd(buf, 0)
 
 	// 进入消息循环
 	aliveTimer := time.NewTicker(time.Second * 5)
 	defer aliveTimer.Stop()
-//	cmd.Cmd = proto.CmdID_KEEPALIVE.Enum()
-//	cmd.SrcServiceID = &c.serverId
-//	cmd.DstServiceID = protobuf.Uint32(id)
-//	buf, _ = protobuf.Marshal(cmd)
+	//	cmd.Cmd = proto.CmdID_KEEPALIVE.Enum()
+	//	cmd.SrcServiceID = &c.serverId
+	//	cmd.DstServiceID = protobuf.Uint32(id)
+	//	buf, _ = protobuf.Marshal(cmd)
 	for {
-		if conn.IsClosed() {
+		conn.SendNormalMsg([]byte("hello world"), 1)
+		if false {
 			return
 		}
 
 		// 每5秒钟发送一次保活信令
 		select {
 		case <-aliveTimer.C:
-			conn.SendMsg("hello world")
-//			if err != nil {
-//				c.logger.Errorf(logTag, "send keepalive cmd failed %s", err)
-//			}
+			conn.SendNormalMsg([]byte("hello world"), 1)
+			//			if err != nil {
+			//				c.logger.Errorf(logTag, "send keepalive cmd failed %s", err)
+			//			}
 		default:
 		}
 
@@ -148,36 +150,36 @@ func (c *NetClient) connJob(conn *NetCommunicator.ConnBetweenTwoComputer) {
 
 		fmt.Printf("client recieve message", data.Data)
 
-//		if data.MsgType == uint16(proto.MsgType_CMD) {
-//			c.logger.Errorf(logTag, "client com doesn't accept cmd!", conn)
-//			return
-//		} else {
-			// 根据过滤规则对消息进行过滤
-//			if len(c.filterChans) > 0 {
-//				msg := new(proto.Msg)
-//				decodeErr := protobuf.Unmarshal(data.Data, msg)
-//				if decodeErr != nil {
-//					c.logger.Errorf(logTag, "decode msg failed, %s", decodeErr)
-//					continue
-//				}
-//				sh := msg.Header.GetSHeader()
-//				if sh == nil {
-//					c.logger.Errorf(logTag, "get session header failed: %s", msg)
-//					continue
-//				}
-//				msgId := sh.GetMsgID()
-//				ch, exists := c.filterChans[msgId]
-//				if exists && ch != nil {
-//					ch <- msg
-//					continue
-//				}
-//			}
+		//		if data.MsgType == uint16(proto.MsgType_CMD) {
+		//			c.logger.Errorf(logTag, "client com doesn't accept cmd!", conn)
+		//			return
+		//		} else {
+		// 根据过滤规则对消息进行过滤
+		//			if len(c.filterChans) > 0 {
+		//				msg := new(proto.Msg)
+		//				decodeErr := protobuf.Unmarshal(data.Data, msg)
+		//				if decodeErr != nil {
+		//					c.logger.Errorf(logTag, "decode msg failed, %s", decodeErr)
+		//					continue
+		//				}
+		//				sh := msg.Header.GetSHeader()
+		//				if sh == nil {
+		//					c.logger.Errorf(logTag, "get session header failed: %s", msg)
+		//					continue
+		//				}
+		//				msgId := sh.GetMsgID()
+		//				ch, exists := c.filterChans[msgId]
+		//				if exists && ch != nil {
+		//					ch <- msg
+		//					continue
+		//				}
+		//			}
 
-//			if e := c.msgProc.OnNewMsg(data.Data); e != nil {
-//				c.logger.Errorf(logTag, "process msg failed: %s", e)
-//				continue
-//			}
-		}
+		//			if e := c.msgProc.OnNewMsg(data.Data); e != nil {
+		//				c.logger.Errorf(logTag, "process msg failed: %s", e)
+		//				continue
+		//			}
+		//}
 	}
 }
 
@@ -284,63 +286,63 @@ func (c *NetClient) connJob(conn *NetCommunicator.ConnBetweenTwoComputer) {
 // 启动客户端组件
 func (self *NetClient) Start() (err error) {
 	//自作聪明的加锁?
-//	c.mu.Lock()
-//	defer c.mu.Unlock()
-//
-//	if c.isStarted {
-//		c.logger.Errorf(logTag, "client already started!")
-//		err = errors.New("client already started")
-//		return
-//	}
+	//	c.mu.Lock()
+	//	defer c.mu.Unlock()
+	//
+	//	if c.isStarted {
+	//		c.logger.Errorf(logTag, "client already started!")
+	//		err = errors.New("client already started")
+	//		return
+	//	}
 
 	// 读取配置
-//	cfg, ok := cfgMgr.Instance().Get(c.cfgName).(*protoCfg.ClientCfg)
-//	if !ok {
-//		c.logger.Errorf(logTag, "get cfg failed")
-//		err = errors.New("get cfg failed")
-//		return
-//	}
-//	c.allSvrId = make([]uint32, 0)
-//	c.svrIdMap = make(map[string]uint32, maxServerNum)
-//	c.connMap = make(map[uint32]*net.Conn, maxServerNum)
-//	addrs := make([]string, 0, len(cfg.ServerEntries))
-//	for _, entry := range cfg.ServerEntries {
-//		id, e := utils.ConvertServerIDString2Number(*entry.Id)
-//		if e != nil {
-//			c.logger.Errorf(logTag, "invalid server id %s", *entry.Id)
-//			err = errors.New("invalid server id")
-//			return
-//		}
-//		c.allSvrId = append(c.allSvrId, id)
-//		for _, d := range entry.Addrs {
-//			c.svrIdMap[d] = id
-//		}
-//		addrs = append(addrs, entry.Addrs...)
-//	}
-//	c.routeTable = make([]int, maxServerNum)
-//	for _, entry := range cfg.RouteEntries {
-//		for i := *entry.HashBegin; i <= *entry.HashEnd && i < maxServerNum; i++ {
-//			c.routeTable[i] = int(*entry.ServerIdx)
-//		}
-//	}
+	//	cfg, ok := cfgMgr.Instance().Get(c.cfgName).(*protoCfg.ClientCfg)
+	//	if !ok {
+	//		c.logger.Errorf(logTag, "get cfg failed")
+	//		err = errors.New("get cfg failed")
+	//		return
+	//	}
+	//	c.allSvrId = make([]uint32, 0)
+	//	c.svrIdMap = make(map[string]uint32, maxServerNum)
+	//	c.connMap = make(map[uint32]*net.Conn, maxServerNum)
+	//	addrs := make([]string, 0, len(cfg.ServerEntries))
+	//	for _, entry := range cfg.ServerEntries {
+	//		id, e := utils.ConvertServerIDString2Number(*entry.Id)
+	//		if e != nil {
+	//			c.logger.Errorf(logTag, "invalid server id %s", *entry.Id)
+	//			err = errors.New("invalid server id")
+	//			return
+	//		}
+	//		c.allSvrId = append(c.allSvrId, id)
+	//		for _, d := range entry.Addrs {
+	//			c.svrIdMap[d] = id
+	//		}
+	//		addrs = append(addrs, entry.Addrs...)
+	//	}
+	//	c.routeTable = make([]int, maxServerNum)
+	//	for _, entry := range cfg.RouteEntries {
+	//		for i := *entry.HashBegin; i <= *entry.HashEnd && i < maxServerNum; i++ {
+	//			c.routeTable[i] = int(*entry.ServerIdx)
+	//		}
+	//	}
 
 	// 初始化网络组件
 	self.connectInfo = NetCommunicator.NewConnectInfo(false, "tcp", "127.0.0.1:15000")
-//		0, int(*cfg.SendLimit))
+	//		0, int(*cfg.SendLimit))
 	if self.connectInfo == nil {
-//		c.logger.Errorf(logTag, "allocate commu failed")
-		err = errors.New("alloc commu failed")
+		//		c.logger.Errorf(logTag, "allocate commu failed")
+		err = Errors.New("alloc commu failed")
 		return
 	}
 
 	// 启动网络通信
-//	c.logger.Infof(logTag, "client %s is started", c)
+	//	c.logger.Infof(logTag, "client %s is started", c)
 	self.connectInfo.Start(func(conn *NetCommunicator.ConnBetweenTwoComputer) {
 		go self.connJob(conn)
 	})
 
 	// 启动巡检协程
-//	go c.checkConns()
+	//	go c.checkConns()
 
 	self.isStarted = true
 	return nil
@@ -415,12 +417,12 @@ func (self *NetClient) Start() (err error) {
 //	     以p2p方式发送数据时该参数用于保存服务id(uint32类型)；
 //	     以广播和轮询方式发送数据时忽略该参数；
 //	     以取模和路由表查询方式发送数据时该参数用于保存hash key([]byte类型)
-func (self *NetClient) SendMsg(data []byte) error {
-//rt proto.RouteTypeID, hashCalc HashCalculator, data []byte, arg interface{}) error {
-	if sendErr := conn.SendNormalMsg(data, 0); sendErr != nil {
-		c.logger.Errorf(logTag, "send data failed on con %s %s", conn, sendErr)
-		return errors.New("send data failed on con %s %s", conn, sendErr)
-	}
+// func (self *NetClient) SendMsg(data []byte) error {
+// 	//rt proto.RouteTypeID, hashCalc HashCalculator, data []byte, arg interface{}) error {
+// 	if sendErr := conn.SendNormalMsg(data, 0); sendErr != nil {
+// 		c.logger.Errorf(logTag, "send data failed on con %s %s", conn, sendErr)
+// 		return errors.New("send data failed on con %s %s", conn, sendErr)
+// 	}
 //	switch rt {
 //	case proto.RouteTypeID_P2P:
 //		// p2p方式，显式指定服务器id
@@ -528,4 +530,4 @@ func (self *NetClient) SendMsg(data []byte) error {
 //	}
 //
 //	return errors.New("invalid route type %v", rt)
-}
+// }

@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
+// "fmt"
 //	"github.com/golang/protobuf/proto"
-	"sync"
+// "sync"
 //	"ximigame.com/types/proto/config"
 //	"ximigame.com/types/proto/external"
 )
@@ -19,17 +19,16 @@ import (
 
 type TestGameService struct {
 	framework.BaseService
-	mu            sync.Mutex
-	isClient      bool
-//	versionCfgMap map[string]*config.GameVerInfoCfg
+	// mu       sync.Mutex
+	isClient bool
+	//	versionCfgMap map[string]*config.GameVerInfoCfg
 }
 
 var (
 	serviceInstance = new(TestGameService) //创建服务实例
-
 )
 
-
+// esop-209
 //重载注册配置函数
 //func (s *TestGameService) RegisterCfg() (int, error) {
 //	_, e := s.BaseService.RegisterCfg()

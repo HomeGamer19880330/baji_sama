@@ -16,20 +16,39 @@ import (
 //	"ximigame.com/utils"
 )
 
+//服务接口
+type ServiceInterface interface {
+	//	MsgProcessor
+	Init(*FrameWork) (int, error) //初始化
+	//	RegisterCfg() (int, error)                                   //注册配置
+	//	SetLogLevel()                                                //设置日志等级
+	SetupNetwork() (int, error) //启动网络
+	//	ProcessHttpCmd(h *process.HttpContext)                       //处理http命令
+	//	ProcessTimer(tn *timer.TimeoutNotify)                        //处理定时器超时
+	//	ProcessMsg(buff []byte) error                                //处理消息
+	//	OnReload()                                                   //重载
+	//	OnExit()                                                     //退出
+	//	OnNetDisconn(conn *net.Conn)                                 //网络连接异常断开
+	//	MainLoop()                                                   //主循环
+	//	RegisterMsgHandle()                                          //注册所有消息处理
+	//	RegOneMsgHandle(msgId uint32, handle MsgHandle) (int, error) //注册一个消息处理
+}
+
 //服务框架
 type FrameWork struct {
-	Service Service //服务接口
+	Service ServiceInterface //服务接口
 }
 
 //框架实例
 var (
 	fw                 *FrameWork
 	PerfProfileEnabled bool = false
+
 //	PerfProfileEnabled = flag.Bool("pprof", false, "enable cpu/heap profiler") 命令行参数分析
 )
 
 func init() {
-	fw = new(FrameWork)
+	fw := new(FrameWork)
 }
 
 //获取服务框架实例
@@ -38,9 +57,9 @@ func Instance() *FrameWork {
 }
 
 //设置服务接口
-func (fw *FrameWork) SetService(s Service) {
-	fw.Service = s
-}
+// func (self *FrameWork) SetService(s interface{}) {
+// 	self.Service = s
+// }
 
 //启动服务(除非服务退出，该函数永远不返回)
 func (self *FrameWork) Run() {
@@ -64,7 +83,7 @@ func (self *FrameWork) Run() {
 	}
 
 	//初始化服务接口
-	_, e := self.Service.Init(fw)
+	_, e := self.Service.Init(self)
 	if e != nil {
 		panic(e.Error())
 	}
@@ -77,8 +96,6 @@ func (self *FrameWork) Run() {
 //type MsgProcessor interface {
 //	OnNewMsg(buff []byte) error
 //}
-
-
 
 ////消息上下文接口
 //type MsgContext interface {
