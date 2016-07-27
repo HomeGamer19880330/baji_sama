@@ -20,8 +20,8 @@ func main() {
 
 	serviceInstance.isClient = false
 	//注册服务
-	servceFramework.Service = serviceInstance.(framework.BaseService*)
-
+	servceFramework.Service = serviceInstance.(*framework.ServiceInterface)
+	//ServiceInterface    TestGameService(framework.BaseService)
 	//启动框架
 	servceFramework.Run()
 }

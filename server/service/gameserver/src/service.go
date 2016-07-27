@@ -1,12 +1,12 @@
 package main
 
-import (
+// import (
 // "fmt"
 //	"github.com/golang/protobuf/proto"
 // "sync"
 //	"ximigame.com/types/proto/config"
 //	"ximigame.com/types/proto/external"
-)
+// )
 
 import (
 	"framework"

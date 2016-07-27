@@ -3,84 +3,74 @@ package framework
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"runtime/pprof"
 )
 
-import (
+// import (
 //	"github.com/golang/protobuf/proto"
 //	"ximigame.com/component/net"
 //	"ximigame.com/component/process"
 //	"ximigame.com/component/timer"
 //	msg "ximigame.com/types/proto"
 //	"ximigame.com/utils"
-)
-
-//服务接口
-type ServiceInterface interface {
-	//	MsgProcessor
-	Init(*FrameWork) (int, error) //初始化
-	//	RegisterCfg() (int, error)                                   //注册配置
-	//	SetLogLevel()                                                //设置日志等级
-	SetupNetwork() (int, error) //启动网络
-	//	ProcessHttpCmd(h *process.HttpContext)                       //处理http命令
-	//	ProcessTimer(tn *timer.TimeoutNotify)                        //处理定时器超时
-	//	ProcessMsg(buff []byte) error                                //处理消息
-	//	OnReload()                                                   //重载
-	//	OnExit()                                                     //退出
-	//	OnNetDisconn(conn *net.Conn)                                 //网络连接异常断开
-	//	MainLoop()                                                   //主循环
-	//	RegisterMsgHandle()                                          //注册所有消息处理
-	//	RegOneMsgHandle(msgId uint32, handle MsgHandle) (int, error) //注册一个消息处理
-}
+// )
 
 //服务框架
-type FrameWork struct {
+type MainFrameWork struct {
+	a       int
 	Service ServiceInterface //服务接口
 }
 
 //框架实例
 var (
-	fw                 *FrameWork
-	PerfProfileEnabled bool = false
+	fw *MainFrameWork
+	// PerfProfileEnabled bool = false
 
 //	PerfProfileEnabled = flag.Bool("pprof", false, "enable cpu/heap profiler") 命令行参数分析
 )
 
 func init() {
-	fw := new(FrameWork)
+	fw := new(MainFrameWork)
 }
 
 //获取服务框架实例
-func Instance() *FrameWork {
+func Instance() *MainFrameWork {
 	return fw
 }
 
-//设置服务接口
-// func (self *FrameWork) SetService(s interface{}) {
-// 	self.Service = s
-// }
+// 设置服务接口
+func (self *MainFrameWork) SetService(s ServiceInterface) {
+	self.Service = s
+}
+
+//wo cao
+func (self *MainFrameWork) ShitIt(s int) {
+	// fmt.Println("do in testf")
+	s = 1
+}
 
 //启动服务(除非服务退出，该函数永远不返回)
-func (self *FrameWork) Run() {
+func (self *MainFrameWork) Run() {
 	flag.Parse()
 
 	//判断是否打开性能分析器
-	if PerfProfileEnabled {
-		cf, _ := os.Create("cpu.pprof")
-		defer cf.Close()
-		err := pprof.StartCPUProfile(cf)
-		if err != nil {
-			panic(err)
-		}
-		defer pprof.StopCPUProfile()
+	// if PerfProfileEnabled {
+	// 	cf, _ := os.Create("cpu.pprof")
+	// 	defer cf.Close()
+	// 	err := pprof.StartCPUProfile(cf)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// 	defer pprof.StopCPUProfile()
 
-		hf, _ := os.Create("heap.pprof")
-		err = pprof.WriteHeapProfile(hf)
-		if err != nil {
-			panic(err)
-		}
-	}
+	// 	hf, _ := os.Create("heap.pprof")
+	// 	err = pprof.WriteHeapProfile(hf)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
+	// }
 
 	//初始化服务接口
 	_, e := self.Service.Init(self)

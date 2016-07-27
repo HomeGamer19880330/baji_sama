@@ -32,6 +32,24 @@ import (
 	//	"ximigame.com/utils/errors"
 )
 
+//服务接口
+type ServiceInterface interface {
+	//	MsgProcessor
+	Init(*FrameWork) (int, error) //初始化
+	//	RegisterCfg() (int, error)                                   //注册配置
+	//	SetLogLevel()                                                //设置日志等级
+	SetupNetwork() (int, error) //启动网络
+	//	ProcessHttpCmd(h *process.HttpContext)                       //处理http命令
+	//	ProcessTimer(tn *timer.TimeoutNotify)                        //处理定时器超时
+	//	ProcessMsg(buff []byte) error                                //处理消息
+	//	OnReload()                                                   //重载
+	//	OnExit()                                                     //退出
+	//	OnNetDisconn(conn *net.Conn)                                 //网络连接异常断开
+	//	MainLoop()                                                   //主循环
+	//	RegisterMsgHandle()                                          //注册所有消息处理
+	//	RegOneMsgHandle(msgId uint32, handle MsgHandle) (int, error) //注册一个消息处理
+}
+
 //基础服务
 type BaseService struct {
 	// ServiceInterface
@@ -58,11 +76,11 @@ type BaseService struct {
 	//	Perf          *PerfMon                  //性能监控
 }
 
-const (
-	LogTag              = "Service" //日志tag
-	DefaultTNChanSize   = 10000     //默认定时器管道大小
-	DefaultTaskPoolSize = 1000      //默认协程池大小
-)
+// const (
+// 	LogTag              = "Service" //日志tag
+// 	DefaultTNChanSize   = 10000     //默认定时器管道大小
+// 	DefaultTaskPoolSize = 1000      //默认协程池大小
+// )
 
 //实现Service接口:初始化函数
 func (self *BaseService) Init(mainFrameWrok_ *FrameWork) (int, error) {
