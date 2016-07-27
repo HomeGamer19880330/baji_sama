@@ -3,9 +3,9 @@ package framework
 
 import (
 	"flag"
-	"fmt"
-	"os"
-	"runtime/pprof"
+	// "fmt"
+	// "os"
+	// "runtime/pprof"
 )
 
 // import (
@@ -32,7 +32,8 @@ var (
 )
 
 func init() {
-	fw := new(MainFrameWork)
+	fw = new(MainFrameWork)
+	// fw = fw
 }
 
 //获取服务框架实例
@@ -49,6 +50,7 @@ func (self *MainFrameWork) SetService(s ServiceInterface) {
 func (self *MainFrameWork) ShitIt(s int) {
 	// fmt.Println("do in testf")
 	s = 1
+
 }
 
 //启动服务(除非服务退出，该函数永远不返回)
@@ -79,7 +81,8 @@ func (self *MainFrameWork) Run() {
 	}
 
 	//调用服务主循环函数，该函数应该一直循环直到收到命令退出
-	go self.Service.MainLoop()
+	// go 
+	self.Service.MainLoop()
 }
 
 ////消息通知接口

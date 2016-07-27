@@ -7,7 +7,11 @@ package NetClient
 
 import (
 	"fmt"
-	//"sync"
+// <<<<<<< Updated upstream
+// 	//"sync"
+// =======
+// //	"sync"
+// >>>>>>> Stashed changes
 	"time"
 )
 
@@ -49,6 +53,7 @@ type NetClient struct {
 const (
 	//maxServerNum = dao.TableNum
 	logTag = "cli_com"
+//	maxServerNum = dao.TableNum
 )
 
 // 分配并初始化客户端组件
@@ -83,7 +88,7 @@ func NewClient(clientName string) *NetClient {
 //}
 
 // 客户端组件每个连接的消息循环
-func (c *NetClient) connJob(conn *NetCommunicator.ConnBetweenTwoComputer) {
+func (self *NetClient) connJob(conn *NetCommunicator.ConnBetweenTwoComputer) {
 	defer conn.Close()
 
 	// 保存连接

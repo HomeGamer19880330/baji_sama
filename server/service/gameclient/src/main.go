@@ -18,7 +18,7 @@ func main() {
 		os.Exit(-1)
 	}
 
-	serviceInstance.isClient = true
+	serviceInstance.IsClient = true
 	//注册服务
 	servceFramework.SetService(serviceInstance)
 

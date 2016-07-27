@@ -20,7 +20,7 @@ import (
 type TestGameService struct {
 	framework.BaseService
 	// mu       sync.Mutex
-	isClient bool
+	// isClient bool
 	//	versionCfgMap map[string]*config.GameVerInfoCfg
 }
 
