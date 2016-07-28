@@ -86,7 +86,8 @@ g_service_dir = os.path.join(g_project_root_dir, "service")
 # "gamemaster",
 # "minigames"]
 
-SERVICES_LIST = ["gameserver"
+SERVICES_LIST = ["gameserver",
+	"gameclient"
 ]
 
 if __name__ == "__main__":

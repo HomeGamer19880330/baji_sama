@@ -35,7 +35,7 @@ import (
 //服务接口
 type ServiceInterface interface {
 	//	MsgProcessor
-	Init(*FrameWork) (int, error) //初始化
+	Init(*MainFrameWork) (int, error) //初始化
 	//	RegisterCfg() (int, error)                                   //注册配置
 	//	SetLogLevel()                                                //设置日志等级
 	SetupNetwork() (int, error) //启动网络
@@ -45,7 +45,7 @@ type ServiceInterface interface {
 	//	OnReload()                                                   //重载
 	//	OnExit()                                                     //退出
 	//	OnNetDisconn(conn *net.Conn)                                 //网络连接异常断开
-	//	MainLoop()                                                   //主循环
+	MainLoop()                                                   //主循环
 	//	RegisterMsgHandle()                                          //注册所有消息处理
 	//	RegOneMsgHandle(msgId uint32, handle MsgHandle) (int, error) //注册一个消息处理
 }
@@ -66,7 +66,7 @@ type BaseService struct {
 	//	HttpChan      chan *process.HttpContext //接收http命令的管道
 	//	TNChan        chan *timer.TimeoutNotify //接收定时器超时通知的管道
 	//	MP            MsgMap                    //消息映射
-	mainFrameWork *FrameWork //记录框架实例
+	mainFrameWork *MainFrameWork //记录框架实例
 	//	ServiceID     uint32                    //保存服务id
 	//	cliCfgMap     map[string]uint32         //记录客户端组件的配置名和服务类型的映射关系
 	clientMap map[uint32]*NetClient.NetClient //所有客户端组件，key为服务类型
@@ -74,6 +74,8 @@ type BaseService struct {
 	//	TaskPool      *routinepool.RoutinePool  //消息处理协程池
 	//	StatusWrapper *reportdata.StatusWrapper //上报数据到状态服
 	//	Perf          *PerfMon                  //性能监控
+
+	IsClient      bool
 }
 
 // const (
@@ -83,7 +85,7 @@ type BaseService struct {
 // )
 
 //实现Service接口:初始化函数
-func (self *BaseService) Init(mainFrameWrok_ *FrameWork) (int, error) {
+func (self *BaseService) Init(mainFrameWrok_ *MainFrameWork) (int, error) {
 	//创建各个管道
 	//		s.ReloadChan = make(chan int, 1)
 	self.ExitChan = make(chan int, 1)
@@ -95,7 +97,7 @@ func (self *BaseService) Init(mainFrameWrok_ *FrameWork) (int, error) {
 	//
 	//		//初始化客户端组件表
 	//		s.cliCfgMap = make(map[string]uint32)
-	//		s.CP = make(map[uint32]*client.Client)
+	self.clientMap = make(map[uint32]*NetClient.NetClient)
 	//
 	//		//初始化进程管理组件
 	//		s.Proc = process.Instance()
@@ -257,28 +259,33 @@ func (self *BaseService) SetupNetwork() (int, error) {
 	//		return -1, e
 	//	}
 
-	//启动服务端组件
-	self.serverInstance = NetServer.Instance()
-	if self.serverInstance == nil {
-		return -1, Errors.New("get server instance failed")
-	}
-	if !self.serverInstance.Initialize() {
-		//		s.CM,
-		//	strings.TrimSuffix(cfgsync.SvrDeployFile, ".cfg"), s.Log, s)
-		return -1, Errors.New("server init failed")
-	}
-	e := self.serverInstance.Start()
-	if e != nil {
-		return -1, e
-	}
+	if self.IsClient {
+		//启动客户端组件
+		//原著中所有客户端SERVICE都有一个CFG同步组件CfgSync,启动后连接配置中心,从配置中心下载最新的连接配置放在deploy路径下,
+		//deploy路径下的Addr: "127.0.0.1:15000" SvrType: 3 记录配置中心的IP地址和端口号,以及此服务的配置类型
+		//	serverId := self.Svr.GetServerId()
+		//	for cfgName, svrType := range s.cliCfgMap {
+		self.clientMap[1] = NetClient.NewClient("holy")
+		self.clientMap[1].Start()
 
-	//启动客户端组件
-	//原著中所有客户端SERVICE都有一个CFG同步组件CfgSync,启动后连接配置中心,从配置中心下载最新的连接配置放在deploy路径下,
-	//deploy路径下的Addr: "127.0.0.1:15000" SvrType: 3 记录配置中心的IP地址和端口号,以及此服务的配置类型
-	//	serverId := self.Svr.GetServerId()
-	//	for cfgName, svrType := range s.cliCfgMap {
-	self.clientMap[1] = NetClient.NewClient("holy")
-	self.clientMap[1].Start()
+
+	} else {
+
+				//启动服务端组件
+		self.serverInstance = NetServer.Instance()
+		if self.serverInstance == nil {
+			return -1, Errors.New("get server instance failed")
+		}
+		if !self.serverInstance.Initialize() {
+			//		s.CM,
+			//	strings.TrimSuffix(cfgsync.SvrDeployFile, ".cfg"), s.Log, s)
+			return -1, Errors.New("server init failed")
+		}
+		e := self.serverInstance.Start()
+		if e != nil {
+			return -1, e
+		}
+	}
 	//	}
 	//
 	////初始化运营日志组件

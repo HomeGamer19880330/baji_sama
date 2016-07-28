@@ -486,6 +486,7 @@ func (self *ConnBetweenTwoComputer) closeNow(normalClose bool, isEOF bool) {
 		//		self.closeReason = BY_ACCIDENT
 		//	}
 		//}
+
 		close(self.inPipe)
 		close(self.outPipe)
 		//		logger.Debugf(c.commu.connType, "connection %s closed %s", c, c.closeReason)
@@ -533,6 +534,10 @@ func (self *ConnBetweenTwoComputer) SendMsg(msg *NetMsg, d time.Duration) error 
 		return err
 	}
 	return nil
+}
+
+func (self *ConnBetweenTwoComputer) Close() {
+	self.closeNow(true, false)
 }
 
 // 发送信令，主要用于客户端组件和服务端组件之间的控制协议
@@ -583,9 +588,9 @@ func (self *ConnBetweenTwoComputer) IsClosed() bool {
 }
 
 // 关闭连接
-func (self *ConnBetweenTwoComputer) Close() {
-	self.closeNow(true, false)
-}
+// func (self *ConnBetweenTwoComputer) Close() {
+// 	self.closeNow(true, false)
+// }
 
 // // 关闭连接
 // func (self *ConnBetweenTwoComputer) SayHello() {
