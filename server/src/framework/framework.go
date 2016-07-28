@@ -20,30 +20,30 @@ import (
 //服务框架
 type MainFrameWork struct {
 	a       int
-	Service ServiceInterface //服务接口
+//	Service ServiceInterface //服务接口
 }
 
 //框架实例
-var (
-	fw *MainFrameWork
-	// PerfProfileEnabled bool = false
+//var (
+//	fw *MainFrameWork
+//	// PerfProfileEnabled bool = false
 
-//	PerfProfileEnabled = flag.Bool("pprof", false, "enable cpu/heap profiler") 命令行参数分析
-)
+////	PerfProfileEnabled = flag.Bool("pprof", false, "enable cpu/heap profiler") 命令行参数分析
+//)
 
-func init() {
-	fw := new(MainFrameWork)
-}
+//func init() {
+//	fw := new(MainFrameWork)
+//}
 
-//获取服务框架实例
-func Instance() *MainFrameWork {
-	return fw
-}
+////获取服务框架实例
+//func Instance() *MainFrameWork {
+//	return fw
+//}
 
-// 设置服务接口
-func (self *MainFrameWork) SetService(s ServiceInterface) {
-	self.Service = s
-}
+//// 设置服务接口
+//func (self *MainFrameWork) SetService(s ServiceInterface) {
+//	self.Service = s
+//}
 
 //wo cao
 func (self *MainFrameWork) ShitIt(s int) {
@@ -52,35 +52,35 @@ func (self *MainFrameWork) ShitIt(s int) {
 }
 
 //启动服务(除非服务退出，该函数永远不返回)
-func (self *MainFrameWork) Run() {
-	flag.Parse()
+//func (self *MainFrameWork) Run() {
+//	flag.Parse()
 
-	//判断是否打开性能分析器
-	// if PerfProfileEnabled {
-	// 	cf, _ := os.Create("cpu.pprof")
-	// 	defer cf.Close()
-	// 	err := pprof.StartCPUProfile(cf)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// 	defer pprof.StopCPUProfile()
+//	//判断是否打开性能分析器
+//	// if PerfProfileEnabled {
+//	// 	cf, _ := os.Create("cpu.pprof")
+//	// 	defer cf.Close()
+//	// 	err := pprof.StartCPUProfile(cf)
+//	// 	if err != nil {
+//	// 		panic(err)
+//	// 	}
+//	// 	defer pprof.StopCPUProfile()
 
-	// 	hf, _ := os.Create("heap.pprof")
-	// 	err = pprof.WriteHeapProfile(hf)
-	// 	if err != nil {
-	// 		panic(err)
-	// 	}
-	// }
+//	// 	hf, _ := os.Create("heap.pprof")
+//	// 	err = pprof.WriteHeapProfile(hf)
+//	// 	if err != nil {
+//	// 		panic(err)
+//	// 	}
+//	// }
 
-	//初始化服务接口
-	_, e := self.Service.Init(self)
-	if e != nil {
-		panic(e.Error())
-	}
+//	//初始化服务接口
+//	_, e := self.Service.Init(self)
+//	if e != nil {
+//		panic(e.Error())
+//	}
 
-	//调用服务主循环函数，该函数应该一直循环直到收到命令退出
-	go self.Service.MainLoop()
-}
+//	//调用服务主循环函数，该函数应该一直循环直到收到命令退出
+//	go self.Service.MainLoop()
+//}
 
 ////消息通知接口
 //type MsgProcessor interface {
