@@ -1,0 +1,23 @@
+package mongo
+
+// http://gopkg.in/mgo.v2
+import (
+	"gopkg.in/mgo.v2"
+	"time"
+	"fmt"
+)
+
+//初始化数据库
+
+func Init(addr string) *mgo.Session {
+	session, err := mgo.DialWithTimeout(addr, time.Second * 5)
+	if err != nil {
+		if session == nil {
+			panic(fmt.Sprintf("connect mongo %s failed! %s", addr, err))
+		}else {
+			panic(fmt.Sprintf("mongo", "connect mongo err, %s", err))
+		}
+	}
+	session.SetSafe(&mgo.Safe{})
+	return session
+}
