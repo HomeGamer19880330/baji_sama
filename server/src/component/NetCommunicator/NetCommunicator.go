@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	//	"sync"
-	//	"dawn"
 	"time"
 )
 
@@ -53,10 +51,10 @@ type ConnBetweenTwoComputer struct {
 	connectInfo *ConnectInfo // 网络通信类型
 	isClosed    bool         // 标明该连接是否已关闭
 	//	closeReason         CloseReason       // 连接关闭原因
-	inPipe  safechan.AnyChan // 接收消息通道
-	outPipe safechan.AnyChan // 发送消息通道
-	conn    net.Conn         // tcp/udp连接
-	id      uint32           // 连接id
+	inPipe   safechan.AnyChan // 接收消息通道
+	outPipe  safechan.AnyChan // 发送消息通道
+	conn     net.Conn         // tcp/udp连接
+	uniqueId uint32           // 连接id
 	//	disconnCallbackFunc func(interface{}) // 连接异常断开的通知回调函数
 	//	disconnCallbackArg  interface{}       // 调用模块的私有参数
 	lastRecvTimeStamp int64  // 记录socket上次收包的时间戳
@@ -66,30 +64,25 @@ type ConnBetweenTwoComputer struct {
 }
 
 // 创建新的连接
-func newConnBetweenTwoComputer(connectInfo *ConnectInfo, conn net.Conn) *ConnBetweenTwoComputer {
+func NewConnBetweenTwoComputer(inMsgLimit int, outMsgLimit int, conn net.Conn, uniqueId uint32) *ConnBetweenTwoComputer {
 	newconn := new(ConnBetweenTwoComputer)
-	newconn.connectInfo = connectInfo
+	//	newconn.connectInfo = connectInfo
 	newconn.isClosed = false
-	newconn.inPipe = make(safechan.AnyChan, connectInfo.inMsgLimit)
-	newconn.outPipe = make(safechan.AnyChan, connectInfo.outMsgLimit)
+	newconn.inPipe = make(safechan.AnyChan, inMsgLimit)
+	newconn.outPipe = make(safechan.AnyChan, outMsgLimit)
 	newconn.conn = conn
-	//	logger.Debugf(newconn.commu.connType, "established new con %s", newconn)
-	//	connectInfo.wgRecvConns.Add(1)
+	newconn.uniqueId = uniqueId
+	// logger.Debugf(newconn.commu.connType, "established new con %s", newconn)
+	// connectInfo.wgRecvConns.Add(1)
 	go newconn.recv()
-	//	connectInfo.isTCP ||
-	if !connectInfo.isServer {
-		// udp服务器暂时只能作为数据接收方，因此不启动发送协程
-		//		c.wgSendConns.Add(1)
-		go newconn.send()
-	}
+	// connectInfo.isTCP ||
+	// if !connectInfo.isServer {
+	// udp服务器暂时只能作为数据接收方，因此不启动发送协程
+	// c.wgSendConns.Add(1)
+	// 简化,全部启动发送和接收协程
+	go newconn.send()
+	//	}
 	return newconn
-}
-
-//var int Home = 1
-
-func Hello() int {
-	fmt.Println("hello dawn")
-	return 100
 }
 
 func NewConnectInfo(isServer bool, connType string, addr string) *ConnectInfo {
@@ -427,7 +420,7 @@ func listen(c *ConnectInfo, f OnNewConnFunc) {
 
 		//		c.netConnector = con
 		// 通知调用模块新连接的建立
-		f(newConnBetweenTwoComputer(c, con))
+		f(NewConnBetweenTwoComputer(c, con))
 	}
 }
 
@@ -459,7 +452,7 @@ func startTCPClient(c *ConnectInfo, f OnNewConnFunc) {
 		}
 		//			c.netConnector = con
 		// 通知调用模块新连接的建立
-		f(newConnBetweenTwoComputer(c, con))
+		f(NewConnBetweenTwoComputer(c, con))
 		//		}
 	}()
 }
