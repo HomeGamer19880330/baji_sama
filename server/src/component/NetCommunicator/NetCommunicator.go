@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	//	"sync"
-	//	"dawn"
 	"time"
 )
 
@@ -24,10 +22,8 @@ const (
 	magicNumber   = 0xdaff   // 协议头魔数"dawn 拂晓"
 )
 
-type CONNECTION_TYPE string
-
 // 连接建立时调用的回调函数原型
-type OnNewConnectionCreatedFunc func(c *ConnBetweenTwoComputer)
+type OnNewConnFunc func(c *ConnBetweenTwoComputer)
 
 type NetMsg struct {
 	MsgType uint16 // 消息类型
@@ -40,7 +36,7 @@ func NewNetMsg(msgtype uint16, data []byte) *NetMsg {
 }
 
 //创建一个网络服务器或者客户端的描述文件
-type OnePortCreateInfo struct {
+type ConnectInfo struct {
 	//	netConnectorGo      net.Conn          // tcp/udp连接的类
 	isServer    bool         // 是否是服务器
 	ipAddr      *net.TCPAddr // 网址
@@ -52,13 +48,13 @@ type OnePortCreateInfo struct {
 
 //一个真实两台机器连接,以及他们之间收发消息的处理
 type ConnBetweenTwoComputer struct {
-	onePortCreateInfoInstance *OnePortCreateInfo // 网络通信类型
-	isClosed                  bool               // 标明该连接是否已关闭
+	connectInfo *ConnectInfo // 网络通信类型
+	isClosed    bool         // 标明该连接是否已关闭
 	//	closeReason         CloseReason       // 连接关闭原因
-	inPipe  safechan.AnyChan // 接收消息通道
-	outPipe safechan.AnyChan // 发送消息通道
-	conn    net.Conn         // tcp/udp连接
-	id      uint32           // 连接id
+	inPipe   safechan.AnyChan // 接收消息通道
+	outPipe  safechan.AnyChan // 发送消息通道
+	conn     net.Conn         // tcp/udp连接
+	uniqueId uint32           // 连接id
 	//	disconnCallbackFunc func(interface{}) // 连接异常断开的通知回调函数
 	//	disconnCallbackArg  interface{}       // 调用模块的私有参数
 	lastRecvTimeStamp int64  // 记录socket上次收包的时间戳
@@ -68,34 +64,29 @@ type ConnBetweenTwoComputer struct {
 }
 
 // 创建新的连接
-func newConnBetweenTwoComputer(onePortCreateInfoInstance *OnePortCreateInfo, conn net.Conn) *ConnBetweenTwoComputer {
+func NewConnBetweenTwoComputer(inMsgLimit int, outMsgLimit int, conn net.Conn, uniqueId uint32) *ConnBetweenTwoComputer {
 	newconn := new(ConnBetweenTwoComputer)
-	newconn.onePortCreateInfoInstance = onePortCreateInfoInstance
+	//	newconn.connectInfo = connectInfo
 	newconn.isClosed = false
-	newconn.inPipe = make(safechan.AnyChan, onePortCreateInfoInstance.inMsgLimit)
-	newconn.outPipe = make(safechan.AnyChan, onePortCreateInfoInstance.outMsgLimit)
+	newconn.inPipe = make(safechan.AnyChan, inMsgLimit)
+	newconn.outPipe = make(safechan.AnyChan, outMsgLimit)
 	newconn.conn = conn
-	//	logger.Debugf(newconn.commu.connType, "established new con %s", newconn)
-	//	onePortCreateInfoInstance.wgRecvConns.Add(1)
+	newconn.uniqueId = uniqueId
+	// logger.Debugf(newconn.commu.connType, "established new con %s", newconn)
+	// connectInfo.wgRecvConns.Add(1)
 	go newconn.recv()
-	//	onePortCreateInfoInstance.isTCP ||
-	if !onePortCreateInfoInstance.isServer {
-		// udp服务器暂时只能作为数据接收方，因此不启动发送协程
-		//		c.wgSendConns.Add(1)
-		go newconn.send()
-	}
+	// connectInfo.isTCP ||
+	// if !connectInfo.isServer {
+	// udp服务器暂时只能作为数据接收方，因此不启动发送协程
+	// c.wgSendConns.Add(1)
+	// 简化,全部启动发送和接收协程
+	go newconn.send()
+	//	}
 	return newconn
 }
 
-//var int Home = 1
-
-// func Hello() int {
-// 	fmt.Println("hello dawn")
-// 	return 100
-// }
-
-func NewOnePortCreateInfo(isServer bool, connType CONNECTION_TYPE, addr string) *OnePortCreateInfo {
-	connect := new(OnePortCreateInfo)
+func NewConnectInfo(isServer bool, connType string, addr string) *ConnectInfo {
+	connect := new(ConnectInfo)
 	connect.isServer = isServer
 	ipAddr, error := net.ResolveTCPAddr(connType, addr)
 	if error != nil {
@@ -152,7 +143,7 @@ func (self *ConnBetweenTwoComputer) recv() {
 	self.lastRecvTimeStamp = currentTimeStamp
 
 	for {
-		if !self.onePortCreateInfoInstance.isEnabled {
+		if !self.connectInfo.isEnabled {
 			// 网络通信已被关闭
 			self.closeNow(true, false)
 		}
@@ -183,8 +174,8 @@ func (self *ConnBetweenTwoComputer) recv() {
 				//					return
 				//				}
 			}
-			//&& self.onePortCreateInfoInstance.isTCP
-			if self.onePortCreateInfoInstance.isServer {
+			//&& self.connectInfo.isTCP
+			if self.connectInfo.isServer {
 				if err == nil {
 					self.lastRecvTimeStamp = currentTimeStamp
 				} else if currentTimeStamp-self.lastRecvTimeStamp > int64(maxSilentTime) {
@@ -320,7 +311,7 @@ func (self *ConnBetweenTwoComputer) readPacketsFromPipe() error {
 
 // 发包routine
 func (self *ConnBetweenTwoComputer) send() {
-	//defer self.onePortCreateInfoInstance.wgSendConns.Done()
+	//defer self.connectInfo.wgSendConns.Done()
 	self.sendbuf = make([]byte, 0, socketBufSize*2)
 
 	for {
@@ -356,7 +347,7 @@ func (self *ConnBetweenTwoComputer) send() {
 }
 
 // 启动网络通信，开始监听/连接端口，连接建立成功后通过回调函数回传给调用模块
-func (c *OnePortCreateInfo) Start(f OnNewConnectionCreatedFunc) {
+func (c *ConnectInfo) Start(f OnNewConnFunc) {
 	if f == nil {
 		//		logger.Errorf(c.connType, "invalid parameter")
 		return
@@ -386,7 +377,7 @@ func (c *OnePortCreateInfo) Start(f OnNewConnectionCreatedFunc) {
 // tcp端口监听routine
 const max = 3
 
-func listen(c *OnePortCreateInfo, f OnNewConnectionCreatedFunc) {
+func listen(c *ConnectInfo, f OnNewConnFunc) {
 	//	defer c.wgListeners.Done()
 	fmt.Println(c.connType, "start listening to", c.ipAddr)
 	//	logger.Debugf(, c.tcpAddrs[index]).
@@ -429,12 +420,12 @@ func listen(c *OnePortCreateInfo, f OnNewConnectionCreatedFunc) {
 
 		//		c.netConnector = con
 		// 通知调用模块新连接的建立
-		f(newConnBetweenTwoComputer(c, con))
+		f(NewConnBetweenTwoComputer(c, con))
 	}
 }
 
 // 启动tcp服务协程
-func startTCPServer(c *OnePortCreateInfo, f OnNewConnectionCreatedFunc) {
+func startTCPServer(c *ConnectInfo, f OnNewConnFunc) {
 	//	service:=":9090"
 	//  tcpAddr, err := net.ResolveTCPAddr("tcp4", c.ipAddr)
 	//  l,err := net.ListenTCP("tcp",tcpAddr)
@@ -448,42 +439,20 @@ func startTCPServer(c *OnePortCreateInfo, f OnNewConnectionCreatedFunc) {
 	//	}
 }
 
-// 启动tcp服务协程
-func startWebSocketServer(onePortCreateInfoInstance *OnePortCreateInfo, f OnNewConnectionCreatedFunc) {
-	http.HandleFunc("/ws", s.HttpHandleFunc)
-	http.ListenAndServe(":8888", nil)
-
-func (server *Server) HttpHandleFunc(w http.ResponseWriter, r *http.Request) {
-	//服务器还未初始化时直接返回，不做处理
-	// server.m4init.RLock()
-	// if server.inited == false {
-	// 	server.m4init.RUnlock()
-	// 	return
-	// }
-	// server.m4init.RUnlock()
-
-	conn, err := server.upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return
-	}
-	server.newConnChan <- conn
-// }
-}
-
 // 启动tcp连接协程
-func startTCPClient(onePortCreateInfoInstance *OnePortCreateInfo, f OnNewConnectionCreatedFunc) {
+func startTCPClient(c *ConnectInfo, f OnNewConnFunc) {
 	go func() {
 		//		for _, addr := range c.tcpAddrs {
-		con, err := net.DialTCP(onePortCreateInfoInstance.connType, nil, onePortCreateInfoInstance.ipAddr)
+		con, err := net.DialTCP(c.connType, nil, c.ipAddr)
 		if err != nil {
-			fmt.Println("connect to tcp addr failed", onePortCreateInfoInstance.ipAddr, err)
+			fmt.Println("connect to tcp addr failed", c.ipAddr, err)
 			//				logger.Errorf(c.connType, "dial tcp addr %v failed %s", addr, err)
 			//				continue
 			return
 		}
 		//			c.netConnector = con
 		// 通知调用模块新连接的建立
-		f(newConnBetweenTwoComputer(onePortCreateInfoInstance, con))
+		f(NewConnBetweenTwoComputer(c, con))
 		//		}
 	}()
 }

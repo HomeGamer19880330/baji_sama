@@ -1,68 +1,54 @@
 package NetServer
 
-// server组件实现的功能如下:
-//	1. 通过标准配置格式加载、重加载服务器id、监听端口和ip地址；
-//	2. 启动tcp服务并接收来自客户端的连接；
-//package server
-
+//gorilla
+//http://www.gorillatoolkit.org/
 import (
 	"fmt"
-	//"sync"
 	"time"
+	"net/http"
 )
 
 import (
-	//protobuf "github.com/golang/protobuf/proto"
-	//cfgMgr "ximigame.com/component/cfg"
-	//"ximigame.com/component/log"
 	"component/NetCommunicator"
-
-	"component/UniqueIdGenerator"
-	//"ximigame.com/framework"
-	//"ximigame.com/types/proto"
-	//protoCfg "ximigame.com/types/proto/config"
-	//"ximigame.com/utils"
 	"component/Utils/Errors"
+
+	"github.com/gorilla/websocket"
+	"component/UniqueIdGenerator"
 )
 
+const (
+	readBufferSize = 64 << 10        // 读消息缓冲区64K
+	writeBufferSize = 64 << 10       // 写消息缓冲区64K
+}
+
 // 服务端组件
-type NetServer struct {
-	//	netCommunicator *NetCommunicator.ConnectInfo // 网络组件
-	//logger    *log.Logger            // 日志组件
-	//connMgr   ConnManager            // 连接管理器
-	//mu        sync.Mutex             // 保护锁
-	//cfgName   string                 // 全局配置名
-	inMsgLimit  int    // 接收消息管道容量上限
-	outMsgLimit int    // 发送消息管道容量上限
-	isStarted   bool   // 是否已启动
-	addr        string // 服务地址
+type WebSocketServer struct {
+	inMsgLimit      int                          // 接收消息管道容量上限
+	outMsgLimit     int                          // 发送消息管道容量上限
+	isStarted       bool
+	addr            string // 服务地址
+	allConnectsBetweenComputerLock       sync.RWMutex      
+	allConnectsBetweenComputer         	map[uint32]*NetCommunicator.ConnBetweenTwoComputer                                // 保存连接的map
 	//msgProc   framework.MsgProcessor // 消息处理方
 	//isGateway bool                   // 该服务组件是否属于接入服
 	serverId uint32 // 服务id
+	UniqueIdGenerator *idGenerator
+	upgrader *websocket.Upgrader //用来创建websocket tcp连接的东西
 }
 
 //var (
-//	uuidGen     = new(uuid.UuidGen) // 客户端连接id生成器
+//	svrInstance *NetServer // 服务组件单件实例
+//	//uuidGen     = new(uuid.UuidGen) // 客户端连接id生成器
 //)
 
 const (
-	logTag = "svr_com"
+	logTag = "WebSocketServer"
 )
 
-// 初始化服务端组件
-//	connMgr: 连接管理器
-//	cfgName: 配置标识符
-//	logger: 日志管理器
-func (self *NetServer) Initialize(addr string) bool {
+func (self *WebSocketServer) Initialize(addr string) bool {
 	self.addr = addr
-	//connMgr ConnManager, cfgName string,
-	//logger *log.Logger, proc framework.MsgProcessor)
-	//bool
-	//	net.SetLogDir(logger.GetDir())
-	//	s.logger = logger
-	//	s.connMgr = connMgr
-	//	s.cfgName = cfgName
-	//	s.msgProc = proc
+	self.upgrader = &websocket.Upgrader{ReadBufferSize: readBufferSize, WriteBufferSize: writeBufferSize}
+	self.idGenerator = new(UniqueIdGenerator.UniqueIdGenerator)
 	return true
 }
 
@@ -88,7 +74,7 @@ func (self *NetServer) GetAddr() string {
 }
 
 // 服务组件每个连接的消息循环
-func (self *NetServer) connJob(connectOnTwoComputer *NetCommunicator.ConnBetweenTwoComputer) {
+func (self *WebSocketServer) connJob(connectOnTwoComputer *NetCommunicator.ConnBetweenTwoComputer) {
 	//	defer communicator.Close()
 
 	// 等待客户端组件的注册命令
@@ -152,6 +138,7 @@ func (self *NetServer) connJob(connectOnTwoComputer *NetCommunicator.ConnBetween
 		// value :=
 		//
 		if connectOnTwoComputer.IsClosed() {
+			self.removeConnectsBetweenComputer(connectOnTwoComputer)
 			return
 		}
 
@@ -170,6 +157,7 @@ func (self *NetServer) connJob(connectOnTwoComputer *NetCommunicator.ConnBetween
 
 		msg, recvErr := connectOnTwoComputer.RecvMsg(time.Second)
 		if recvErr != nil {
+			self.removeConnectsBetweenComputer(connectOnTwoComputer)
 			continue
 		}
 		fmt.Printf("server recieve message", msg.Data)
@@ -220,56 +208,24 @@ func (self *NetServer) connJob(connectOnTwoComputer *NetCommunicator.ConnBetween
 }
 
 // 启动服务端组件
-func (self *NetServer) Start() (err error) {
-	//s.mu.Lock()
-	//defer s.mu.Unlock()
+func (self *WebSocketServer) Start() (err error) {
 	if self.isStarted {
 		//		s.logger.Errorf(logTag, "server already started!")
 		err = Errors.New("server already started")
 		return err
 	}
-
-	//	// 读取配置
-	//	cfg, ok := cfgMgr.Instance().Get(s.cfgName).(*protoCfg.ServerCfg)
-	//	if !ok {
-	//	s.logger.Errorf(logTag, "get cfg failed")
-	//	err = errors.New("get cfg failed")
-	//	return
-	//	}
-	//	serverId, convertErr := utils.ConvertServerIDString2Number(*cfg.Id)
-	//	if convertErr != nil {
-	//	s.logger.Errorf(logTag, "invalid server id %s, %s", *cfg.Id, convertErr)
-	//	err = errors.New("invalid cfg")
-	//	return
-	//	}
-	self.serverId = 10065
-	//	if cfg.IsGateway == nil {
-	//		s.logger.Errorf(logTag, "invalid cfg for server")
-	//		err = errors.New("invalid cfg")
-	//		return
-	//	}
-	//	s.isGateway = *cfg.IsGateway
-	//	serverAddr    string =
-	self.netCommunicator = NetCommunicator.NewConnectInfo(true, "tcp", "127.0.0.1:15000")
-	//		int(*cfg.RecvLimit), int(*cfg.SendLimit))
-	if self.netCommunicator == nil {
-		//		s.logger.Errorf(logTag, "allocate commu failed")
-		err = Errors.New("allocate commu failed")
-		return
+	
+	http.HandleFunc("/ws", self.HttpHandleFunc)
+	
+	err = http.ListenAndServe(addr, nil)
+	if err != nil {
+		panic(err)
 	}
-
-	// 启动服务组件
-	//	s.logger.Infof(logTag, "server %s is started", s)
-	self.netCommunicator.Start(func(conn *NetCommunicator.ConnBetweenTwoComputer) {
-		go self.connJob(conn)
-	})
-
 	self.isStarted = true
-	return nil
 }
 
 // 停止服务端组件
-func (self *NetServer) Stop() {
+func (self *WebSocketServer) Stop() {
 	//	s.mu.Lock()
 	//	defer s.mu.Unlock()
 
@@ -277,31 +233,39 @@ func (self *NetServer) Stop() {
 	//	self.netCommunicator.Stop()
 	//	s.isStarted = false
 }
+func (self *WebSocketServer) addConnectsBetweenComputer(){
+	self.allConnectsBetweenComputerLock.Lock()
+	self.allConnectsBetweenComputer[connectBetweenComputer.uniqueId] = connectBetweenComputer
+	self.allConnectsBetweenComputerLock.Unlock()
+}
 
-// 重启服务端组件
-//	ch: 服务端消息接收管道
-//func (s *Server) Restart() error {
-//s.logger.Debugf(logTag, "server %s is restarted", s)
-//s.Stop()
-//return s.Start()
-//}
-//
-//// 获取服务id
-//func (s *Server) GetServerId() uint32 {
-//return s.serverId
-//}
-//
-//// 生成net header
-//func (s *Server) GenNetHead(conn *net.Conn, cmd *proto.NetCmdID) *proto.NetHeader {
-//ip, port, _ := conn.RemoteAddr()
-//ip = ip.To4()
-//var ipaddr uint32
-//ipaddr = uint32(ip[0])<<24 | uint32(ip[1])<<16 | uint32(ip[2])<<8 | uint32(ip[3])
-//header := new(proto.NetHeader)
-//header.ServiceID = protobuf.Uint32(s.serverId)
-//header.SessionID = protobuf.Uint32(conn.GetId())
-//header.ClientIP = protobuf.Uint32(ipaddr)
-//header.ClientPort = protobuf.Uint32(uint32(port))
-//header.Cmd = cmd
-//return header
-//}
+func (self *WebSocketServer) removeConnectsBetweenComputer(connectBetweenComputer *NetCommunicator.ConnBetweenTwoComputer){
+	_, exist := self.allConnectsBetweenComputerLock[node.uuid]
+	if exist {
+		self.allConnectsBetweenComputerLock.Lock()
+		delete(self.allConnectsBetweenComputer, connectBetweenComputer.uniqueId)
+		self.allConnectsBetweenComputerLock.Unlock()
+	}
+}
+func (self *WebSocketServer) HttpHandleFunc(w http.ResponseWriter, r *http.Request) {
+	//服务器还未初始化时直接返回，不做处理
+	if server.inited == false {
+		return
+	}
+
+	conn, err := self.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	
+	connectBetweenComputer := NetCommunicator.NewConnBetweenTwoComputer(
+		inMsgLimit,
+		outMsgLimit,
+		conn
+		self.idGenerator.GenUint32)
+
+		
+	go self.connJob(connectBetweenComputer)
+//	server.newConnChan <- conn
+}
+
